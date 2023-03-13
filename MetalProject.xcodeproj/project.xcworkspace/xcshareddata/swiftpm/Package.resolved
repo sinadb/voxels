@@ -1,0 +1,23 @@
+{
+  "pins" : [
+    {
+      "identity" : "cglm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/recp/cglm",
+      "state" : {
+        "revision" : "3894ea32fb860f0eb8fe7aec539c7d9397b25de1",
+        "version" : "0.8.8"
+      }
+    },
+    {
+      "identity" : "math",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/SwiftGL/Math",
+      "state" : {
+        "revision" : "8bdd2e542f28828d0c224c1ea8e046c6f652ec40",
+        "version" : "3.0.0"
+      }
+    }
+  ],
+  "version" : 2
+}

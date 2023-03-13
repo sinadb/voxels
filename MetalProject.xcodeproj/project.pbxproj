@@ -1,0 +1,654 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		DA1EB18429B388ED00942766 /* Helper.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA1EB18329B388ED00942766 /* Helper.swift */; };
+		DA75DE8B2954AE1500251E4C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA75DE8A2954AE1500251E4C /* AppDelegate.swift */; };
+		DA75DE8D2954AE1500251E4C /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA75DE8C2954AE1500251E4C /* ViewController.swift */; };
+		DA75DE8F2954AE1500251E4C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DA75DE8E2954AE1500251E4C /* Assets.xcassets */; };
+		DA75DE922954AE1500251E4C /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = DA75DE902954AE1500251E4C /* Main.storyboard */; };
+		DA75DE9D2954AE1500251E4C /* MetalProjectTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA75DE9C2954AE1500251E4C /* MetalProjectTests.swift */; };
+		DA75DEA72954AE1500251E4C /* MetalProjectUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA75DEA62954AE1500251E4C /* MetalProjectUITests.swift */; };
+		DA75DEA92954AE1500251E4C /* MetalProjectUITestsLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA75DEA82954AE1500251E4C /* MetalProjectUITestsLaunchTests.swift */; };
+		DA75DEB62954AE3300251E4C /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA75DEB52954AE3300251E4C /* Renderer.swift */; };
+		DA75DEBC2955A58B00251E4C /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = DA75DEBB2955A58B00251E4C /* Shaders.metal */; };
+		DA75DEBE2955AEAF00251E4C /* Maths.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA75DEBD2955AEAF00251E4C /* Maths.swift */; };
+		DA99E4542977098900249982 /* compute.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA99E4532977098900249982 /* compute.swift */; };
+		DAA6AAF129BBC16700BF03E3 /* constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAA6AAF029BBC16700BF03E3 /* constants.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		DA75DE992954AE1500251E4C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DA75DE7F2954AE1400251E4C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DA75DE862954AE1500251E4C;
+			remoteInfo = MetalProject;
+		};
+		DA75DEA32954AE1500251E4C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DA75DE7F2954AE1400251E4C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = DA75DE862954AE1500251E4C;
+			remoteInfo = MetalProject;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		DA1EB18329B388ED00942766 /* Helper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Helper.swift; path = ../Helper.swift; sourceTree = "<group>"; };
+		DA75DE872954AE1500251E4C /* MetalProject.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MetalProject.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DA75DE8A2954AE1500251E4C /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		DA75DE8C2954AE1500251E4C /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		DA75DE8E2954AE1500251E4C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		DA75DE912954AE1500251E4C /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		DA75DE932954AE1500251E4C /* MetalProject.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MetalProject.entitlements; sourceTree = "<group>"; };
+		DA75DE982954AE1500251E4C /* MetalProjectTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MetalProjectTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DA75DE9C2954AE1500251E4C /* MetalProjectTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalProjectTests.swift; sourceTree = "<group>"; };
+		DA75DEA22954AE1500251E4C /* MetalProjectUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MetalProjectUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		DA75DEA62954AE1500251E4C /* MetalProjectUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalProjectUITests.swift; sourceTree = "<group>"; };
+		DA75DEA82954AE1500251E4C /* MetalProjectUITestsLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalProjectUITestsLaunchTests.swift; sourceTree = "<group>"; };
+		DA75DEB52954AE3300251E4C /* Renderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Renderer.swift; sourceTree = "<group>"; };
+		DA75DEB72954AF0100251E4C /* MetalProject-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "MetalProject-Bridging-Header.h"; sourceTree = "<group>"; };
+		DA75DEBA2954AF2C00251E4C /* ShaderDefinition.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderDefinition.h; sourceTree = "<group>"; };
+		DA75DEBB2955A58B00251E4C /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
+		DA75DEBD2955AEAF00251E4C /* Maths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Maths.swift; sourceTree = "<group>"; };
+		DA99E4532977098900249982 /* compute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = compute.swift; sourceTree = "<group>"; };
+		DAA6AAF029BBC16700BF03E3 /* constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = constants.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		DA75DE842954AE1500251E4C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA75DE952954AE1500251E4C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA75DE9F2954AE1500251E4C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		DA75DE7E2954AE1400251E4C = {
+			isa = PBXGroup;
+			children = (
+				DA75DE892954AE1500251E4C /* MetalProject */,
+				DA75DE9B2954AE1500251E4C /* MetalProjectTests */,
+				DA75DEA52954AE1500251E4C /* MetalProjectUITests */,
+				DA75DE882954AE1500251E4C /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		DA75DE882954AE1500251E4C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				DA75DE872954AE1500251E4C /* MetalProject.app */,
+				DA75DE982954AE1500251E4C /* MetalProjectTests.xctest */,
+				DA75DEA22954AE1500251E4C /* MetalProjectUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		DA75DE892954AE1500251E4C /* MetalProject */ = {
+			isa = PBXGroup;
+			children = (
+				DA75DEBB2955A58B00251E4C /* Shaders.metal */,
+				DAA6AAF029BBC16700BF03E3 /* constants.swift */,
+				DA1EB18329B388ED00942766 /* Helper.swift */,
+				DA99E4532977098900249982 /* compute.swift */,
+				DA75DEBD2955AEAF00251E4C /* Maths.swift */,
+				DA75DE8A2954AE1500251E4C /* AppDelegate.swift */,
+				DA75DEB52954AE3300251E4C /* Renderer.swift */,
+				DA75DE8C2954AE1500251E4C /* ViewController.swift */,
+				DA75DEBA2954AF2C00251E4C /* ShaderDefinition.h */,
+				DA75DE8E2954AE1500251E4C /* Assets.xcassets */,
+				DA75DE902954AE1500251E4C /* Main.storyboard */,
+				DA75DE932954AE1500251E4C /* MetalProject.entitlements */,
+				DA75DEB72954AF0100251E4C /* MetalProject-Bridging-Header.h */,
+			);
+			path = MetalProject;
+			sourceTree = "<group>";
+		};
+		DA75DE9B2954AE1500251E4C /* MetalProjectTests */ = {
+			isa = PBXGroup;
+			children = (
+				DA75DE9C2954AE1500251E4C /* MetalProjectTests.swift */,
+			);
+			path = MetalProjectTests;
+			sourceTree = "<group>";
+		};
+		DA75DEA52954AE1500251E4C /* MetalProjectUITests */ = {
+			isa = PBXGroup;
+			children = (
+				DA75DEA62954AE1500251E4C /* MetalProjectUITests.swift */,
+				DA75DEA82954AE1500251E4C /* MetalProjectUITestsLaunchTests.swift */,
+			);
+			path = MetalProjectUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		DA75DE862954AE1500251E4C /* MetalProject */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DA75DEAC2954AE1500251E4C /* Build configuration list for PBXNativeTarget "MetalProject" */;
+			buildPhases = (
+				DA75DE832954AE1500251E4C /* Sources */,
+				DA75DE842954AE1500251E4C /* Frameworks */,
+				DA75DE852954AE1500251E4C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MetalProject;
+			packageProductDependencies = (
+			);
+			productName = MetalProject;
+			productReference = DA75DE872954AE1500251E4C /* MetalProject.app */;
+			productType = "com.apple.product-type.application";
+		};
+		DA75DE972954AE1500251E4C /* MetalProjectTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DA75DEAF2954AE1500251E4C /* Build configuration list for PBXNativeTarget "MetalProjectTests" */;
+			buildPhases = (
+				DA75DE942954AE1500251E4C /* Sources */,
+				DA75DE952954AE1500251E4C /* Frameworks */,
+				DA75DE962954AE1500251E4C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DA75DE9A2954AE1500251E4C /* PBXTargetDependency */,
+			);
+			name = MetalProjectTests;
+			productName = MetalProjectTests;
+			productReference = DA75DE982954AE1500251E4C /* MetalProjectTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		DA75DEA12954AE1500251E4C /* MetalProjectUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DA75DEB22954AE1500251E4C /* Build configuration list for PBXNativeTarget "MetalProjectUITests" */;
+			buildPhases = (
+				DA75DE9E2954AE1500251E4C /* Sources */,
+				DA75DE9F2954AE1500251E4C /* Frameworks */,
+				DA75DEA02954AE1500251E4C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DA75DEA42954AE1500251E4C /* PBXTargetDependency */,
+			);
+			name = MetalProjectUITests;
+			productName = MetalProjectUITests;
+			productReference = DA75DEA22954AE1500251E4C /* MetalProjectUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		DA75DE7F2954AE1400251E4C /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1400;
+				LastUpgradeCheck = 1420;
+				TargetAttributes = {
+					DA75DE862954AE1500251E4C = {
+						CreatedOnToolsVersion = 14.0.1;
+						LastSwiftMigration = 1400;
+					};
+					DA75DE972954AE1500251E4C = {
+						CreatedOnToolsVersion = 14.0.1;
+						TestTargetID = DA75DE862954AE1500251E4C;
+					};
+					DA75DEA12954AE1500251E4C = {
+						CreatedOnToolsVersion = 14.0.1;
+						TestTargetID = DA75DE862954AE1500251E4C;
+					};
+				};
+			};
+			buildConfigurationList = DA75DE822954AE1400251E4C /* Build configuration list for PBXProject "MetalProject" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = DA75DE7E2954AE1400251E4C;
+			packageReferences = (
+				DAA8A8F629586E85005CCC45 /* XCRemoteSwiftPackageReference "Math" */,
+				DAA8A8F929587218005CCC45 /* XCRemoteSwiftPackageReference "cglm" */,
+			);
+			productRefGroup = DA75DE882954AE1500251E4C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				DA75DE862954AE1500251E4C /* MetalProject */,
+				DA75DE972954AE1500251E4C /* MetalProjectTests */,
+				DA75DEA12954AE1500251E4C /* MetalProjectUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		DA75DE852954AE1500251E4C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DA75DE8F2954AE1500251E4C /* Assets.xcassets in Resources */,
+				DA75DE922954AE1500251E4C /* Main.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA75DE962954AE1500251E4C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA75DEA02954AE1500251E4C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		DA75DE832954AE1500251E4C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DA75DEBC2955A58B00251E4C /* Shaders.metal in Sources */,
+				DA1EB18429B388ED00942766 /* Helper.swift in Sources */,
+				DA75DE8D2954AE1500251E4C /* ViewController.swift in Sources */,
+				DA75DEB62954AE3300251E4C /* Renderer.swift in Sources */,
+				DA99E4542977098900249982 /* compute.swift in Sources */,
+				DA75DEBE2955AEAF00251E4C /* Maths.swift in Sources */,
+				DA75DE8B2954AE1500251E4C /* AppDelegate.swift in Sources */,
+				DAA6AAF129BBC16700BF03E3 /* constants.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA75DE942954AE1500251E4C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DA75DE9D2954AE1500251E4C /* MetalProjectTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA75DE9E2954AE1500251E4C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DA75DEA92954AE1500251E4C /* MetalProjectUITestsLaunchTests.swift in Sources */,
+				DA75DEA72954AE1500251E4C /* MetalProjectUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		DA75DE9A2954AE1500251E4C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DA75DE862954AE1500251E4C /* MetalProject */;
+			targetProxy = DA75DE992954AE1500251E4C /* PBXContainerItemProxy */;
+		};
+		DA75DEA42954AE1500251E4C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = DA75DE862954AE1500251E4C /* MetalProject */;
+			targetProxy = DA75DEA32954AE1500251E4C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		DA75DE902954AE1500251E4C /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				DA75DE912954AE1500251E4C /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		DA75DEAA2954AE1500251E4C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.3;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		DA75DEAB2954AE1500251E4C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.3;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		DA75DEAD2954AE1500251E4C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = MetalProject/MetalProject.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = GHB984CW8D;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Dash.MetalProject;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "MetalProject/MetalProject-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		DA75DEAE2954AE1500251E4C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = MetalProject/MetalProject.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = GHB984CW8D;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Dash.MetalProject;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "MetalProject/MetalProject-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		DA75DEB02954AE1500251E4C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = GHB984CW8D;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.3;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Dash.MetalProjectTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MetalProject.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MetalProject";
+			};
+			name = Debug;
+		};
+		DA75DEB12954AE1500251E4C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = GHB984CW8D;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 12.3;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Dash.MetalProjectTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/MetalProject.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/MetalProject";
+			};
+			name = Release;
+		};
+		DA75DEB32954AE1500251E4C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = GHB984CW8D;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Dash.MetalProjectUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = MetalProject;
+			};
+			name = Debug;
+		};
+		DA75DEB42954AE1500251E4C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_TEAM = GHB984CW8D;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = Dash.MetalProjectUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = MetalProject;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		DA75DE822954AE1400251E4C /* Build configuration list for PBXProject "MetalProject" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DA75DEAA2954AE1500251E4C /* Debug */,
+				DA75DEAB2954AE1500251E4C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DA75DEAC2954AE1500251E4C /* Build configuration list for PBXNativeTarget "MetalProject" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DA75DEAD2954AE1500251E4C /* Debug */,
+				DA75DEAE2954AE1500251E4C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DA75DEAF2954AE1500251E4C /* Build configuration list for PBXNativeTarget "MetalProjectTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DA75DEB02954AE1500251E4C /* Debug */,
+				DA75DEB12954AE1500251E4C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DA75DEB22954AE1500251E4C /* Build configuration list for PBXNativeTarget "MetalProjectUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DA75DEB32954AE1500251E4C /* Debug */,
+				DA75DEB42954AE1500251E4C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		DAA8A8F629586E85005CCC45 /* XCRemoteSwiftPackageReference "Math" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/SwiftGL/Math";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.0.0;
+			};
+		};
+		DAA8A8F929587218005CCC45 /* XCRemoteSwiftPackageReference "cglm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/recp/cglm";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.3.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+	};
+	rootObject = DA75DE7F2954AE1400251E4C /* Project object */;
+}
