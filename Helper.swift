@@ -54,8 +54,11 @@ struct Attribute {
 }
 
 struct Texture {
-    let texture : MTLTexture
+    var texture : MTLTexture
     let index : Int
+    mutating func update_texture(with texture : MTLTexture){
+        self.texture = texture
+    }
 }
 
 struct UniformBuffer {
@@ -177,6 +180,14 @@ class Mesh{
             }
         }
         
+    }
+    
+    func updateTexture(with new_texture : Texture){
+        for i in 0..<texturesArray.count{
+            if(texturesArray[i].index == new_texture.index){
+                texturesArray[i] = new_texture
+            }
+        }
     }
     
     func draw(renderEncoder : MTLRenderCommandEncoder){
