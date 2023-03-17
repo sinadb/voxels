@@ -10,6 +10,59 @@ import Metal
 import MetalKit
 
 class ViewController: NSViewController {
+    
+    var cameraOrigin : simd_float3?
+    var cameraDirection : simd_float3?
+    
+    var cameraState : Bool = false {
+        didSet {
+            
+            if let origin = cameraOrigin, let direction = cameraDirection {
+               // print(origin,direction)
+                var camera = simd_float4x4(eye: origin, center: direction, up: simd_float3(0,1,0))
+                renderer.currentScene.updateCamera(with: camera)
+                self.renderer.currentScene.eye = origin
+                self.renderer.currentScene.direction = direction
+            }
+
+                cameraState = false
+        }
+    }
+    
+    @IBOutlet weak var xEye: NSTextField!
+    @IBOutlet weak var yEye: NSTextField!
+    @IBOutlet weak var zEye: NSTextField!
+    
+    @IBOutlet weak var testOrigin: NSTextField!
+    
+    @IBOutlet weak var testDirection: NSTextField!
+    
+    @IBAction func updateCamera(_ sender: NSTextField) {
+        
+        switch sender {
+        case xEye:
+            print(sender.doubleValue)
+            return
+        case yEye:
+            print(sender.doubleValue)
+            return
+        case zEye:
+            print(sender.doubleValue)
+            return
+        case testOrigin:
+            let origin = sender.stringValue.split(separator: ",")
+            cameraState = true
+            cameraOrigin = simd_float3(Float(origin[0])!,Float(origin[1])!,Float(origin[2])!)
+            return
+        case testDirection:
+            let direction = sender.stringValue.split(separator: ",")
+            cameraDirection = simd_float3(Float(direction[0])!,Float(direction[1])!,Float(direction[2])!)
+            cameraState = true
+        default:
+            return
+        }
+    }
+    
 
     @IBOutlet weak var skybox1: NSButton!
     @IBOutlet weak var skybox0: NSButton!

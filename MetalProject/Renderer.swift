@@ -64,6 +64,8 @@ class skyBoxScene {
     
     var centreOfReflection : simd_float3
     var camera : simd_float4x4
+    var eye : simd_float3
+    var direction : simd_float3
     var projection : simd_float4x4
     var firstPassNodes = [Mesh]()
     var finalPassNodes = [Mesh]()
@@ -71,6 +73,7 @@ class skyBoxScene {
     var skyBoxfirstPassMesh : Mesh?
     var skyBoxfinalPassMesh : Mesh?
     var reflectiveNodeMesh : Mesh?
+    var reflectiveNodeInitialState = [simd_float3]()
     var current_node = 0
     
     
@@ -136,10 +139,12 @@ class skyBoxScene {
         renderTarget = Texture(texture: renderTargetTexture!, index: textureIDs.cubeMap)
     }
     
-    init(device : MTLDevice, at view : MTKView, from centreOfReflection: simd_float3, lookFrom camera : simd_float4x4, with projection : simd_float4x4) {
+    init(device : MTLDevice, at view : MTKView, from centreOfReflection: simd_float3, eye : simd_float3, direction : simd_float3, with projection : simd_float4x4) {
         self.device = device
         self.centreOfReflection = centreOfReflection
-        self.camera = camera
+        self.camera = simd_float4x4(eye: eye, center: direction, up: simd_float3(0,1,0))
+        self.eye = eye
+        self.direction = direction
         self.projection = projection
         commandQueue = device.makeCommandQueue()!
         self.view = view
@@ -211,7 +216,10 @@ class skyBoxScene {
        
         var skyBoxfirstPassTransform = createBuffersForRenderToCube()
         
-        var skyBoxfinalPassTransform = Transforms(Scale: simd_float4x4(scale: simd_float3(1)), Translate: simd_float4x4(translate: simd_float3(0)), Rotation: simd_float4x4(rotationXYZ: simd_float3(0)), Projection: projection, Camera: camera)
+        var finalPassCamera = camera
+        finalPassCamera[3] = simd_float4(0,0,0,1)
+        
+        var skyBoxfinalPassTransform = Transforms(Scale: simd_float4x4(scale: simd_float3(1)), Translate: simd_float4x4(translate: simd_float3(0)), Rotation: simd_float4x4(rotationXYZ: simd_float3(0)), Projection: projection, Camera: finalPassCamera)
         
         
         skyBoxfirstPassMesh?.createAndAddUniformBuffer(bytes: &skyBoxfirstPassTransform, length: MemoryLayout<Transforms>.stride*6, at: vertexBufferIDs.uniformBuffers, for: device)
@@ -237,12 +245,46 @@ class skyBoxScene {
     }
     func addReflectiveNode(mesh : MDLMesh, scale : simd_float3, rotation : simd_float3){
         
+        reflectiveNodeInitialState.append(scale)
+        reflectiveNodeInitialState.append(centreOfReflection)
+        reflectiveNodeInitialState.append(rotation)
+        
         reflectiveNodeMesh = Mesh(device: device, Mesh: mesh)
         var reflectiveMeshTransform = Transforms(Scale: simd_float4x4(scale: scale), Translate: simd_float4x4(translate: centreOfReflection), Rotation: simd_float4x4(rotationXYZ: rotation), Projection: projection, Camera: camera)
         reflectiveNodeMesh?.createAndAddUniformBuffer(bytes: &reflectiveMeshTransform, length: MemoryLayout<Transforms>.stride, at: vertexBufferIDs.uniformBuffers, for: device)
         reflectiveNodeMesh?.createAndAddUniformBuffer(bytes: &rotateFirst, length: MemoryLayout<Int>.stride, at: vertexBufferIDs.order_of_rot_tran, for: device)
         reflectiveNodeMesh?.add_textures(textures: renderTarget!)
+       // var eye = -simd_float3(self.camera[3].x,self.camera[3].y,self.camera[3].z)
+        reflectiveNodeMesh?.createAndAddUniformBuffer(bytes: &eye, length: MemoryLayout<simd_float3>.stride, at: vertexBufferIDs.camera_origin, for: device)
         
+        
+    }
+    
+    func setSkyMapTexture(with texture : Texture){
+        skyBoxfirstPassMesh?.updateTexture(with: texture)
+        skyBoxfinalPassMesh?.updateTexture(with: texture)
+    }
+    
+    func updateCamera(with camera : simd_float4x4){
+        self.camera = camera
+        
+        var reflectiveMeshTransform = Transforms(Scale: simd_float4x4(scale: reflectiveNodeInitialState[0]), Translate: simd_float4x4(translate: centreOfReflection), Rotation: simd_float4x4(rotationXYZ: reflectiveNodeInitialState[2]), Projection: projection, Camera: camera)
+        reflectiveNodeMesh?.createAndAddUniformBuffer(bytes: &reflectiveMeshTransform, length: MemoryLayout<Transforms>.stride, at: vertexBufferIDs.uniformBuffers, for: device)
+        print(eye)
+        reflectiveNodeMesh?.createAndAddUniformBuffer(bytes: &eye, length: MemoryLayout<simd_float3>.stride, at: vertexBufferIDs.camera_origin, for: device)
+        
+        var finalPassCamera = self.camera
+        finalPassCamera[3] = simd_float4(0,0,0,1)
+        var skyBoxfinalPassTransform = Transforms(Scale: simd_float4x4(scale: simd_float3(1)), Translate: simd_float4x4(translate: simd_float3(0)), Rotation: simd_float4x4(rotationXYZ: simd_float3(0)), Projection: projection, Camera: finalPassCamera)
+        
+        skyBoxfinalPassMesh?.createAndAddUniformBuffer(bytes: &skyBoxfinalPassTransform, length: MemoryLayout<Transforms>.stride, at: vertexBufferIDs.uniformBuffers, for: device)
+        
+       
+        
+        for (mesh,state) in zip(finalPassNodes,nodesInitialState){
+            var new_transform = Transforms(Scale: simd_float4x4(scale: state[0]), Translate: simd_float4x4(translate: state[1]), Rotation: simd_float4x4(rotationXYZ: state[2]+simd_float3(0,Float(fps)*0.1,0)), Projection: projection, Camera: camera)
+            mesh.updateUniformBuffer(with: &new_transform)
+        }
         
     }
     
@@ -329,8 +371,7 @@ class Renderer : NSObject, MTKViewDelegate {
     
     var skymapChanged = false {
         didSet {
-            skyBoxMesh?.updateTexture(with: activeSkyBox)
-            finalPassSkyBoxMesh?.updateTexture(with: activeSkyBox)
+            currentScene.setSkyMapTexture(with: activeSkyBox)
             skymapChanged = false
         }
     }
@@ -432,7 +473,7 @@ class Renderer : NSObject, MTKViewDelegate {
         
         
         
-        currentScene = skyBoxScene(device : device, at : mtkView, from: simd_float3(0,0,-10), lookFrom: simd_float4x4(eye: simd_float3(0), center: simd_float3(0,0,-1), up: simd_float3(0,1,0)), with: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100))
+        currentScene = skyBoxScene(device : device, at : mtkView, from: simd_float3(0,0,-10), eye: simd_float3(0,0,-20), direction : simd_float3(0,0,0), with: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100))
         
         
             
@@ -516,7 +557,7 @@ class Renderer : NSObject, MTKViewDelegate {
         currentScene.addSkyBoxNode(with: Texture(texture: skyboxTexture!, index: textureIDs.cubeMap), mesh: cubeMDLMesh)
         currentScene.addNodes(mesh: cubeMDLMesh, scale: simd_float3(1), translate: simd_float3(0,0,-5), rotation: simd_float3(0), colour: simd_float4(1,0,0,1))
         
-        currentScene.addNodes(mesh: cubeMDLMesh, scale: simd_float3(1), translate: simd_float3(5,0,-10), rotation: simd_float3(0), colour: simd_float4(0,1,1,1))
+        currentScene.addNodes(mesh: cubeMDLMesh, scale: simd_float3(1), translate: simd_float3(-10,0,-10), rotation: simd_float3(0), colour: simd_float4(0,1,1,1))
         currentScene.addReflectiveNode(mesh: cubeMDLMesh, scale: simd_float3(5), rotation: simd_float3(0))
         
         reflectiveCubeMesh = Mesh(device: device, Mesh: cubeMDLMesh)

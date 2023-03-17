@@ -20,7 +20,8 @@ enum class vertexBufferIDs : int {
     vertexBuffers = 0,
     uniformBuffers = 1,
     skyMap = 3,
-    order_of_rot_tran = 4
+    order_of_rot_tran = 4,
+    camera_origin = 5
     
 };
 enum class textureIDs : int {
@@ -236,19 +237,20 @@ fragment float4 simple_shader_fragment(VertexOut in [[stage_in]],
 
 vertex VertexOut cubeMap_reflection_vertex(VertexIn in [[stage_in]],
                                            constant Transforms &transforms [[buffer(vertexBufferIDs::uniformBuffers)]],
-                                           constant int &transform_mode[[buffer(vertexBufferIDs::order_of_rot_tran)]]
-                    
+                                           constant int &transform_mode[[buffer(vertexBufferIDs::order_of_rot_tran)]],
+                                           constant float3 &eye [[buffer(vertexBufferIDs::camera_origin)]]
                                            ){
     VertexOut out;
     
     if(transform_mode == transformation_mode::translate_first){
         out.pos = post_transform_translate_first(transforms, in.pos);
-        out.world_pos = float3(transforms.Camera*transforms.Rotation*transforms.Translate*transforms.Scale*in.pos);
+//        out.world_pos = float3(transforms.Camera*transforms.Rotation*transforms.Translate*transforms.Scale*in.pos);
+        out.world_pos = float3(transforms.Rotation*transforms.Translate*transforms.Scale*in.pos) - eye;
         out.normal = normalize(float3(transforms.Camera*transforms.Translate*transforms.Rotation*transforms.Scale*float4(in.normal,0)));
     }
     else {
         out.pos = post_transform_rotate_first(transforms, in.pos);
-        out.world_pos = float3(transforms.Camera*transforms.Translate*transforms.Rotation*transforms.Scale*in.pos);
+        out.world_pos = float3(transforms.Translate*transforms.Rotation*transforms.Scale*in.pos) - eye;
         out.normal = normalize(float3(transforms.Camera*transforms.Translate*transforms.Rotation*transforms.Scale*float4(in.normal,0)));
 
     }

@@ -18,6 +18,7 @@ struct vertexBufferIDs {
     static let instanceBuffers = 2
     static let skyMap = 3
     static let order_of_rot_tran = 4
+    static let camera_origin = 5
 }
 
 struct textureIDs {
