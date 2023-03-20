@@ -67,8 +67,8 @@ class skyBoxScene {
     var eye : simd_float3
     var direction : simd_float3
     var projection : simd_float4x4
-    var firstPassNodes = [Mesh]()
-    var finalPassNodes = [Mesh]()
+    var firstPassNodes = [String : Mesh]()
+    var finalPassNodes = [String : Mesh]()
     var nodesInitialState = [[simd_float3]]()
     var skyBoxfirstPassMesh : Mesh?
     var skyBoxfinalPassMesh : Mesh?
@@ -96,7 +96,7 @@ class skyBoxScene {
         let posAttrib = Attribute(format: .float4, offset: 0, length: 16, bufferIndex: 0)
         let normalAttrib = Attribute(format: .float3, offset: MemoryLayout<Float>.stride*4,length: 12, bufferIndex: 0)
         let texAttrib = Attribute(format: .float2, offset: MemoryLayout<Float>.stride*7, length : 8, bufferIndex: 0)
-       
+        
         let instanceAttrib = Attribute(format : .float3, offset: 0, length : 12, bufferIndex: 1)
         let vertexDescriptor = createVertexDescriptor(attributes: posAttrib,normalAttrib,texAttrib)
         
@@ -105,7 +105,7 @@ class skyBoxScene {
         let simplePipelineFC = functionConstant()
         simplePipelineFC.setValue(type: .bool, value: &False)
         simplePipelineFC.setValue(type: .bool, value: &False)
-        simplePipelineFC.setValue(type: .bool, value: &True)
+        simplePipelineFC.setValue(type: .bool, value: &False)
         simplePipelineFC.setValue(type: .bool, value: &False)
         simplePipeline = pipeLine(device, "simple_shader_vertex", "simple_shader_fragment", vertexDescriptor, simplePipelineFC.functionConstant)!
         
@@ -114,7 +114,7 @@ class skyBoxScene {
         renderReflectionPipleline = pipeLine(device, "cubeMap_reflection_vertex", "cubeMap_reflection_fragment", vertexDescriptor, false)!
         
         
-       // this one renders a skybox
+        // this one renders a skybox
         let skyboxFunctionConstants = functionConstant()
         skyboxFunctionConstants.setValue(type: .bool, value: &True, at: 0)
         skyboxFunctionConstants.setValue(type: .bool, value: &False, at: 1)
@@ -129,8 +129,8 @@ class skyBoxScene {
         let textureDescriptor = MTLTextureDescriptor()
         textureDescriptor.pixelFormat = .bgra8Unorm_srgb
         textureDescriptor.textureType = .typeCube
-        textureDescriptor.width = 800
-        textureDescriptor.height = 800
+        textureDescriptor.width = 1200
+        textureDescriptor.height = 1200
         textureDescriptor.storageMode = .private
         textureDescriptor.usage = [.shaderRead,.renderTarget]
         var renderTargetTexture = device.makeTexture(descriptor: textureDescriptor)
@@ -173,40 +173,97 @@ class skyBoxScene {
     
     
     
-   
     
-    func addNodes(mesh : MDLMesh, scale : simd_float3, translate : simd_float3, rotation : simd_float3, colour : simd_float4){
+    
+    func addNodes(with label : String, mesh : MDLMesh, scale : simd_float3, translate : simd_float3, rotation : simd_float3, colour : simd_float4){
         // firest pass nodes are being rendered from the centre of reflection
         
         var initialState = [scale,translate,rotation]
         nodesInitialState.append(initialState)
-        firstPassNodes.append(Mesh(device: device, Mesh: mesh)!)
-        firstPassNodes[current_node].createAndAddUniformBuffer(bytes: &translateFirst, length: MemoryLayout<Int>.stride, at: vertexBufferIDs.order_of_rot_tran, for: device)
-        var firstPassTransformation = createBuffersForRenderToCube(scale: scale, rotation: rotation, translate: translate, from: centreOfReflection)
-        firstPassNodes[current_node].createAndAddUniformBuffer(bytes: &firstPassTransformation, length: MemoryLayout<Transforms>.stride*6, at: vertexBufferIDs.uniformBuffers, for: device)
-        firstPassNodes[current_node].createAndAddUniformBuffer(bytes: &False, length: 1, at: vertexBufferIDs.skyMap, for: device)
-        
-        var temp_colour = colour
-        firstPassNodes[current_node].createAndAddUniformBuffer(bytes: &temp_colour, length: 16, at: fragmentBufferIDs.colours, for: device, for: .fragment)
-        
-        // second pass nodes are rendered from the camera with self.projection
-        finalPassNodes.append(Mesh(device: device, Mesh: mesh)!)
-        
-        
-        finalPassNodes[current_node].createAndAddUniformBuffer(bytes: &translateFirst, length: MemoryLayout<Int>.stride, at: vertexBufferIDs.order_of_rot_tran, for: device)
-        var finalPassTransformation = Transforms(Scale: simd_float4x4(scale: scale), Translate: simd_float4x4(translate: translate), Rotation: simd_float4x4(rotationXYZ: rotation), Projection: projection, Camera: camera)
-        finalPassNodes[current_node].createAndAddUniformBuffer(bytes: &finalPassTransformation, length: MemoryLayout<Transforms>.stride, at: vertexBufferIDs.uniformBuffers, for: device)
-        finalPassNodes[current_node].createAndAddUniformBuffer(bytes: &False, length: 1, at: vertexBufferIDs.skyMap, for: device)
-        finalPassNodes[current_node].createAndAddUniformBuffer(bytes: &temp_colour, length: 16, at: fragmentBufferIDs.colours, for: device, for: .fragment)
-        
-        for i in 0...2{
-            firstPassNodes[current_node].createAndAddUniformBuffer(bytes: &meshFragmentUniforms[i], length: 1, at: 3 + i, for: device, for: .fragment)
-           
-            finalPassNodes[current_node].createAndAddUniformBuffer(bytes: &meshFragmentUniforms[i], length: 1, at: 3 + i, for: device, for: .fragment)
+        // if the label exists then update the instance data
+        if let _ = firstPassNodes[label]{
+            var firstPassTransformation = createBuffersForRenderToCube(scale: scale, rotation: rotation, translate: translate, from: centreOfReflection)
+            for i in 0...5{
+                firstPassNodes[label]?.createInstance(with: firstPassTransformation[i], and: colour, add: translateFirst)
+            }
+            
+            var finalPassTransformation = Transforms(Scale: simd_float4x4(scale: scale), Translate: simd_float4x4(translate: translate), Rotation: simd_float4x4(rotationXYZ: rotation), Projection: projection, Camera: camera)
+            
+            finalPassNodes[label]?.createInstance(with: finalPassTransformation, and: colour, add: translateFirst)
+            
+        }
+        else {
+            var firstPassTransformation = createBuffersForRenderToCube(scale: scale, rotation: rotation, translate: translate, from: centreOfReflection)
+            let firstPassMesh = Mesh(device: device, Mesh: mesh)!
+            for i in 0...5{
+                firstPassMesh.createInstance(with: firstPassTransformation[i], and: colour, add: translateFirst)
+                
+            }
+            
+            
+            firstPassMesh.createAndAddUniformBuffer(bytes: &False, length: 1, at: vertexBufferIDs.skyMap, for: device)
+            
+            for i in 0...2{
+                firstPassMesh.createAndAddUniformBuffer(bytes: &meshFragmentUniforms[i], length: 1, at: 3 + i, for: device, for: .fragment)
+            }
+            firstPassNodes[label] = firstPassMesh
+            
+            var finalPassTransformation = Transforms(Scale: simd_float4x4(scale: scale), Translate: simd_float4x4(translate: translate), Rotation: simd_float4x4(rotationXYZ: rotation), Projection: projection, Camera: camera)
+            let finalPassMesh = Mesh(device: device, Mesh: mesh)!
+            
+            finalPassMesh.createInstance(with: finalPassTransformation, and: colour, add: translateFirst)
+            finalPassMesh.createAndAddUniformBuffer(bytes: &False, length: 1, at: vertexBufferIDs.skyMap, for: device)
+            for i in 0...2{
+                finalPassMesh.createAndAddUniformBuffer(bytes: &meshFragmentUniforms[i], length: 1, at: 3 + i, for: device, for: .fragment)
+            }
+            finalPassNodes[label] = finalPassMesh
+            
+            
         }
         current_node += 1
         
     }
+    
+    func finalise_nodes_buffers(){
+        for mesh in firstPassNodes.values{
+            mesh.init_instance_buffers()
+        }
+        for mesh in finalPassNodes.values{
+            mesh.init_instance_buffers()
+        }
+    }
+        
+        
+        
+        
+        
+//        firstPassNodes.append(Mesh(device: device, Mesh: mesh)!)
+//        firstPassNodes[current_node].createAndAddUniformBuffer(bytes: &translateFirst, length: MemoryLayout<Int>.stride, at: vertexBufferIDs.order_of_rot_tran, for: device)
+//        var firstPassTransformation = createBuffersForRenderToCube(scale: scale, rotation: rotation, translate: translate, from: centreOfReflection)
+//        firstPassNodes[current_node].createAndAddUniformBuffer(bytes: &firstPassTransformation, length: MemoryLayout<Transforms>.stride*6, at: vertexBufferIDs.uniformBuffers, for: device)
+//        firstPassNodes[current_node].createAndAddUniformBuffer(bytes: &False, length: 1, at: vertexBufferIDs.skyMap, for: device)
+//
+//        var temp_colour = colour
+//        firstPassNodes[current_node].createAndAddUniformBuffer(bytes: &temp_colour, length: 16, at: fragmentBufferIDs.colours, for: device, for: .fragment)
+//
+//        // second pass nodes are rendered from the camera with self.projection
+//        finalPassNodes.append(Mesh(device: device, Mesh: mesh)!)
+//
+//
+//        finalPassNodes[current_node].createAndAddUniformBuffer(bytes: &translateFirst, length: MemoryLayout<Int>.stride, at: vertexBufferIDs.order_of_rot_tran, for: device)
+//        var finalPassTransformation = Transforms(Scale: simd_float4x4(scale: scale), Translate: simd_float4x4(translate: translate), Rotation: simd_float4x4(rotationXYZ: rotation), Projection: projection, Camera: camera)
+//        finalPassNodes[current_node].createAndAddUniformBuffer(bytes: &finalPassTransformation, length: MemoryLayout<Transforms>.stride, at: vertexBufferIDs.uniformBuffers, for: device)
+//        finalPassNodes[current_node].createAndAddUniformBuffer(bytes: &False, length: 1, at: vertexBufferIDs.skyMap, for: device)
+//        finalPassNodes[current_node].createAndAddUniformBuffer(bytes: &temp_colour, length: 16, at: fragmentBufferIDs.colours, for: device, for: .fragment)
+//
+//        for i in 0...2{
+//            firstPassNodes[current_node].createAndAddUniformBuffer(bytes: &meshFragmentUniforms[i], length: 1, at: 3 + i, for: device, for: .fragment)
+//
+//            finalPassNodes[current_node].createAndAddUniformBuffer(bytes: &meshFragmentUniforms[i], length: 1, at: 3 + i, for: device, for: .fragment)
+//        }
+//        current_node += 1
+        
+    //}
     
     func addSkyBoxNode(with texture : Texture, mesh : MDLMesh){
         
@@ -265,28 +322,28 @@ class skyBoxScene {
         skyBoxfinalPassMesh?.updateTexture(with: texture)
     }
     
-    func updateCamera(with camera : simd_float4x4){
-        self.camera = camera
-        
-        var reflectiveMeshTransform = Transforms(Scale: simd_float4x4(scale: reflectiveNodeInitialState[0]), Translate: simd_float4x4(translate: centreOfReflection), Rotation: simd_float4x4(rotationXYZ: reflectiveNodeInitialState[2]), Projection: projection, Camera: camera)
-        reflectiveNodeMesh?.createAndAddUniformBuffer(bytes: &reflectiveMeshTransform, length: MemoryLayout<Transforms>.stride, at: vertexBufferIDs.uniformBuffers, for: device)
-        print(eye)
-        reflectiveNodeMesh?.createAndAddUniformBuffer(bytes: &eye, length: MemoryLayout<simd_float3>.stride, at: vertexBufferIDs.camera_origin, for: device)
-        
-        var finalPassCamera = self.camera
-        finalPassCamera[3] = simd_float4(0,0,0,1)
-        var skyBoxfinalPassTransform = Transforms(Scale: simd_float4x4(scale: simd_float3(1)), Translate: simd_float4x4(translate: simd_float3(0)), Rotation: simd_float4x4(rotationXYZ: simd_float3(0)), Projection: projection, Camera: finalPassCamera)
-        
-        skyBoxfinalPassMesh?.createAndAddUniformBuffer(bytes: &skyBoxfinalPassTransform, length: MemoryLayout<Transforms>.stride, at: vertexBufferIDs.uniformBuffers, for: device)
-        
-       
-        
-        for (mesh,state) in zip(finalPassNodes,nodesInitialState){
-            var new_transform = Transforms(Scale: simd_float4x4(scale: state[0]), Translate: simd_float4x4(translate: state[1]), Rotation: simd_float4x4(rotationXYZ: state[2]+simd_float3(0,Float(fps)*0.1,0)), Projection: projection, Camera: camera)
-            mesh.updateUniformBuffer(with: &new_transform)
-        }
-        
-    }
+//    func updateCamera(with camera : simd_float4x4){
+//        self.camera = camera
+//
+//        var reflectiveMeshTransform = Transforms(Scale: simd_float4x4(scale: reflectiveNodeInitialState[0]), Translate: simd_float4x4(translate: centreOfReflection), Rotation: simd_float4x4(rotationXYZ: reflectiveNodeInitialState[2]), Projection: projection, Camera: camera)
+//        reflectiveNodeMesh?.createAndAddUniformBuffer(bytes: &reflectiveMeshTransform, length: MemoryLayout<Transforms>.stride, at: vertexBufferIDs.uniformBuffers, for: device)
+//        print(eye)
+//        reflectiveNodeMesh?.createAndAddUniformBuffer(bytes: &eye, length: MemoryLayout<simd_float3>.stride, at: vertexBufferIDs.camera_origin, for: device)
+//
+//        var finalPassCamera = self.camera
+//        finalPassCamera[3] = simd_float4(0,0,0,1)
+//        var skyBoxfinalPassTransform = Transforms(Scale: simd_float4x4(scale: simd_float3(1)), Translate: simd_float4x4(translate: simd_float3(0)), Rotation: simd_float4x4(rotationXYZ: simd_float3(0)), Projection: projection, Camera: finalPassCamera)
+//
+//        skyBoxfinalPassMesh?.createAndAddUniformBuffer(bytes: &skyBoxfinalPassTransform, length: MemoryLayout<Transforms>.stride, at: vertexBufferIDs.uniformBuffers, for: device)
+//
+//
+//
+//        for (mesh,state) in zip(finalPassNodes,nodesInitialState){
+//            var new_transform = Transforms(Scale: simd_float4x4(scale: state[0]), Translate: simd_float4x4(translate: state[1]), Rotation: simd_float4x4(rotationXYZ: state[2]+simd_float3(0,Float(fps)*0.1,0)), Projection: projection, Camera: camera)
+//            mesh.updateUniformBuffer(with: &new_transform)
+//        }
+//
+//    }
     
     func renderScene(){
         
@@ -309,10 +366,22 @@ class skyBoxScene {
         // render nodes
         renderEncoder.setCullMode(.back)
         renderEncoder.setFrontFacing(.counterClockwise)
-        for (mesh,state) in zip(firstPassNodes,nodesInitialState){
-            var new_transform = createBuffersForRenderToCube(scale: state[0], rotation: state[2] + simd_float3(0,Float(fps)*0.1,0), translate: state[1], from: centreOfReflection)
-            mesh.updateUniformBuffer(with: &new_transform)
-            mesh.draw(renderEncoder: renderEncoder,with: 6)
+//        for (mesh,state) in zip(firstPassNodes,nodesInitialState){
+////            var new_transform = createBuffersForRenderToCube(scale: state[0], rotation: state[2] + simd_float3(0,Float(fps)*0.1,0), translate: state[1], from: centreOfReflection)
+////            mesh.updateUniformBuffer(with: &new_transform)
+//            mesh.draw(renderEncoder: renderEncoder,with: 6)
+//        }
+        
+        for (label,mesh) in firstPassNodes {
+            
+            for i in 0..<current_node{
+                let state = nodesInitialState[i]
+                var new_transform = createBuffersForRenderToCube(scale: state[0], rotation: state[2] + simd_float3(0,Float(fps)*0.1,0), translate: state[1], from: centreOfReflection)
+                firstPassNodes[label]?.updateUniformBuffer(with: &new_transform, at: i)
+                
+            }
+
+            mesh.draw(renderEncoder: renderEncoder, with: 6*current_node)
         }
         
         // render skybox
@@ -340,10 +409,23 @@ class skyBoxScene {
         
         finalRenderEncoder.setRenderPipelineState(simplePipeline!.m_pipeLine)
         
-        for (mesh,state) in zip(finalPassNodes,nodesInitialState){
-            var new_transform = Transforms(Scale: simd_float4x4(scale: state[0]), Translate: simd_float4x4(translate: state[1]), Rotation: simd_float4x4(rotationXYZ: state[2]+simd_float3(0,Float(fps)*0.1,0)), Projection: projection, Camera: camera)
-            mesh.updateUniformBuffer(with: &new_transform)
-            mesh.draw(renderEncoder: finalRenderEncoder)
+//        for (mesh,state) in zip(finalPassNodes,nodesInitialState){
+//            var new_transform = Transforms(Scale: simd_float4x4(scale: state[0]), Translate: simd_float4x4(translate: state[1]), Rotation: simd_float4x4(rotationXYZ: state[2]+simd_float3(0,Float(fps)*0.1,0)), Projection: projection, Camera: camera)
+//            mesh.updateUniformBuffer(with: &new_transform)
+//            mesh.draw(renderEncoder: finalRenderEncoder)
+//        }
+        
+       
+        for (label,mesh) in finalPassNodes {
+            
+            for i in 0..<current_node{
+                let state = nodesInitialState[i]
+                var new_transform = Transforms(Scale: simd_float4x4(scale: state[0]), Translate: simd_float4x4(translate: state[1]), Rotation: simd_float4x4(rotationXYZ: state[2]+simd_float3(0,Float(fps)*0.1,0)), Projection: projection, Camera: camera)
+                finalPassNodes[label]?.updateUniformBuffer(with: &new_transform, at: i)
+                
+            }
+           
+            mesh.draw(renderEncoder: finalRenderEncoder, with: current_node)
         }
         
         finalRenderEncoder.setRenderPipelineState(renderSkyboxPipeline!.m_pipeLine)
@@ -367,7 +449,8 @@ class skyBoxScene {
 class Renderer : NSObject, MTKViewDelegate {
     
     
-  
+    let testPipeline : pipeLine?
+    let testMesh : Mesh?
     
     var skymapChanged = false {
         didSet {
@@ -441,6 +524,8 @@ class Renderer : NSObject, MTKViewDelegate {
     var flatTexture : MTLTexture?
     var flatTextureDepth : MTLTexture?
     
+    var testMeshes = [Mesh]()
+    
     init?(mtkView: MTKView){
       
         
@@ -473,7 +558,7 @@ class Renderer : NSObject, MTKViewDelegate {
         
         
         
-        currentScene = skyBoxScene(device : device, at : mtkView, from: simd_float3(0,0,-10), eye: simd_float3(0,0,-20), direction : simd_float3(0,0,0), with: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100))
+        currentScene = skyBoxScene(device : device, at : mtkView, from: simd_float3(0,0,0), eye: simd_float3(10,0,10), direction : simd_float3(-1,0,-1), with: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100))
         
         
             
@@ -547,18 +632,33 @@ class Renderer : NSObject, MTKViewDelegate {
         
         let allocator = MTKMeshBufferAllocator(device: device)
         let cubeMDLMesh = MDLMesh(boxWithExtent: simd_float3(1,1,1), segments: simd_uint3(1,1,1), inwardNormals: false, geometryType: .triangles, allocator: allocator)
+        let circleMDLMesh = MDLMesh(sphereWithExtent: simd_float3(1,1,1), segments: simd_uint2(100,100), inwardNormals: False, geometryType: .triangles, allocator: allocator)
         let mdlMeshVD = MDLVertexDescriptor()
         mdlMeshVD.attributes[0] = MDLVertexAttribute(name: MDLVertexAttributePosition, format: .float4, offset: 0, bufferIndex: 0)
         mdlMeshVD.attributes[1] = MDLVertexAttribute(name: MDLVertexAttributeNormal, format: .float3, offset: 16, bufferIndex: 0)
         mdlMeshVD.attributes[2] = MDLVertexAttribute(name: MDLVertexAttributeTextureCoordinate, format: .float2, offset: 28, bufferIndex: 0)
         mdlMeshVD.layouts[0] = MDLVertexBufferLayout(stride: 36)
         cubeMDLMesh.vertexDescriptor = mdlMeshVD
+        circleMDLMesh.vertexDescriptor = mdlMeshVD
         
         currentScene.addSkyBoxNode(with: Texture(texture: skyboxTexture!, index: textureIDs.cubeMap), mesh: cubeMDLMesh)
-        currentScene.addNodes(mesh: cubeMDLMesh, scale: simd_float3(1), translate: simd_float3(0,0,-5), rotation: simd_float3(0), colour: simd_float4(1,0,0,1))
         
-        currentScene.addNodes(mesh: cubeMDLMesh, scale: simd_float3(1), translate: simd_float3(-10,0,-10), rotation: simd_float3(0), colour: simd_float4(0,1,1,1))
-        currentScene.addReflectiveNode(mesh: cubeMDLMesh, scale: simd_float3(5), rotation: simd_float3(0))
+        for _ in 0...1000{
+            let x_r = Float.random(in: -20...20)
+            let y_r = Float.random(in: -20...20)
+            let z_r = Float.random(in: -20...20)
+            
+            let c_r = Float.random(in: 0...1)
+            let c_g = Float.random(in: 0...1)
+            let c_b = Float.random(in: 0...1)
+            currentScene.addNodes(with : "Cube", mesh: cubeMDLMesh, scale: simd_float3(1), translate: simd_float3(x_r,y_r,z_r), rotation: simd_float3(0), colour: simd_float4(c_r,c_g,c_b,1))
+        }
+//        currentScene.addNodes(with : "Cube", mesh: cubeMDLMesh, scale: simd_float3(1), translate: simd_float3(10,0,0), rotation: simd_float3(0), colour: simd_float4(1,0,0,1))
+//
+//        currentScene.addNodes(with : "Cube", mesh: cubeMDLMesh, scale: simd_float3(1), translate: simd_float3(-10,0,0), rotation: simd_float3(0), colour: simd_float4(0,1,1,1))
+        currentScene.addReflectiveNode(mesh: circleMDLMesh, scale: simd_float3(5), rotation: simd_float3(0))
+        
+        currentScene.finalise_nodes_buffers()
         
         reflectiveCubeMesh = Mesh(device: device, Mesh: cubeMDLMesh)
         cubeMesh = Mesh(device: device, Mesh: cubeMDLMesh)
@@ -632,6 +732,58 @@ class Renderer : NSObject, MTKViewDelegate {
         drawer.sampler = sampler
         drawer.renderMeshWithCubeMapReflection = pipeLine(device, "cubeMap_reflection_vertex", "cubeMap_reflection_fragment", vertexDescriptor, false)?.m_pipeLine
         
+        let testFCs = functionConstant()
+        testFCs.setValue(type: .bool, value: &False, at: 0)
+        testFCs.setValue(type: .bool, value: &False, at: 1)
+        testFCs.setValue(type: .bool, value: &False, at: 2)
+        testFCs.setValue(type: .bool, value: &False, at: 3)
+        
+        testPipeline = pipeLine(device, "simple_shader_vertex", "simple_shader_fragment", vertexDescriptor, testFCs.functionConstant)
+        
+        testMesh = Mesh(device: device, Mesh: circleMDLMesh)
+        for _ in 0...3000 {
+            let x_r = Float.random(in: -20...20)
+            let y_r = Float.random(in: -20...20)
+            let z_r = Float.random(in: -20 ... -15)
+            
+            let rot_x = Float.random(in: 0...360)
+            let rot_y = Float.random(in: 0...360)
+            let rot_z = Float.random(in: 0...360)
+            
+            let Transform = Transforms(Scale: simd_float4x4(scale: simd_float3(1)), Translate: simd_float4x4(translate: simd_float3(x_r,y_r,z_r)), Rotation: simd_float4x4(rotationXYZ: simd_float3(rot_x,rot_y,rot_z)), Projection: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100), Camera: simd_float4x4(eye: simd_float3(0,0,0), center: simd_float3(0,0,-1), up: simd_float3(0,1,0)))
+            let c_r = Float.random(in: 0...1)
+            let c_g = Float.random(in: 0...1)
+            let c_b = Float.random(in: 0...1)
+            
+            testMesh?.createInstance(with: Transform, and: simd_float4(c_r,c_g,c_b,1),add: rotateFirst)
+            
+            
+            
+            
+        }
+        testMesh?.init_instance_buffers()
+      
+        testMesh?.createAndAddUniformBuffer(bytes: &rotateFirst, length: MemoryLayout<Int>.stride, at: vertexBufferIDs.order_of_rot_tran, for: device)
+        
+        // test the same render without instancing
+        for _ in 0...3000 {
+            let x_r = Float.random(in: -20...20)
+            let y_r = Float.random(in: -20...20)
+            let z_r = Float.random(in: -20 ... -15)
+            var Transform = Transforms(Scale: simd_float4x4(scale: simd_float3(1)), Translate: simd_float4x4(translate: simd_float3(x_r,y_r,z_r)), Rotation: simd_float4x4(rotationXYZ: simd_float3(0)), Projection: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100), Camera: simd_float4x4(eye: simd_float3(0,0,0), center: simd_float3(0,0,-1), up: simd_float3(0,1,0)))
+            let c_r = Float.random(in: 0...1)
+            let c_g = Float.random(in: 0...1)
+            let c_b = Float.random(in: 0...1)
+            
+            let mesh = Mesh(device: device, Mesh: circleMDLMesh)
+            mesh?.createAndAddUniformBuffer(bytes: &Transform, length: MemoryLayout<Transforms>.stride, at: vertexBufferIDs.uniformBuffers, for: device)
+            var colour = simd_float4(c_r,c_g,c_b,1)
+            mesh?.createAndAddUniformBuffer(bytes: &colour, length: 16, at: vertexBufferIDs.colour, for: device)
+            mesh?.createAndAddUniformBuffer(bytes: &rotateFirst, length: MemoryLayout<Int>.stride, at: vertexBufferIDs.order_of_rot_tran, for: device)
+            
+            testMeshes.append(mesh!)
+            
+        }
         
     }
    
@@ -644,101 +796,26 @@ class Renderer : NSObject, MTKViewDelegate {
         fps += 1
         
         currentScene.renderScene()
-       
 //        guard let commandBuffer = commandQueue.makeCommandBuffer() else {return}
-//        
-//        
-//        
-//        
-//   
-//        
-//        
-//        
-//        
 //        guard let renderPassDescriptor = view.currentRenderPassDescriptor else {return}
-//        renderPassDescriptor.renderTargetArrayLength = 6
-// 
-//       
-//        
-//        
-//        renderPassDescriptor.colorAttachments[0].storeAction = .store
 //        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
-//        renderPassDescriptor.colorAttachments[0].texture = cubeTexture
-//        renderPassDescriptor.depthAttachment.texture = cubeDepthTexture
-//        renderPassDescriptor.depthAttachment.clearDepth = 1.0
-//       guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {return}
-//      
-//        
-//        
-//        
-//           
-//               
-//                renderEncoder.setRenderPipelineState(renderToCubePipeline!.m_pipeLine)
-//                renderEncoder.setDepthStencilState(depthStencilState)
-//                renderEncoder.setFragmentSamplerState(sampler, index: 0)
-//                // render other geometry
-//                renderEncoder.setFrontFacing(.counterClockwise)
-//                renderEncoder.setCullMode(.back)
-//                
-//                
-//                cubeTransform = createBuffersForRenderToCube(scale: simd_float3(1), rotation: simd_float3(0,Float(self.fps)*0.1,0), translate: simd_float3(0,0,-5), from: simd_float3(0,0,-10))
-//                cubeMesh?.updateUniformBuffer(with: &cubeTransform)
-//                cubeMesh?.draw(renderEncoder: renderEncoder, with: 6)
-//                
-//            
-//        
-//        
-//        
-//        
-//        // render the skybox first
-//       
-//            renderEncoder.setFrontFacing(.counterClockwise)
-//            renderEncoder.setCullMode(.front)
-//            skyBoxMesh?.draw(renderEncoder: renderEncoder, with: 6)
-//           
+//        renderPassDescriptor.depthAttachment.clearDepth = 1
+//        renderPassDescriptor.depthAttachment.loadAction = .clear
+//
+//        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {return}
+//
+//        renderEncoder.setRenderPipelineState(testPipeline!.m_pipeLine)
+//        renderEncoder.setDepthStencilState(depthStencilState)
+//        renderEncoder.setCullMode(.back)
+//        renderEncoder.setFrontFacing(.counterClockwise)
+//       //testMesh?.draw(renderEncoder: renderEncoder,with: 3000)
+//
+//        for mesh in testMeshes {
+//            mesh.draw(renderEncoder: renderEncoder)
+//        }
 //
 //        renderEncoder.endEncoding()
-//        
-//      
-//        
-//        
-//        
-//        
-//        
-//        
-//        guard let renderPassDescriptor1 = view.currentRenderPassDescriptor else {return}
-//        renderPassDescriptor1.colorAttachments[0].storeAction = .store
-//        renderPassDescriptor1.colorAttachments[0].loadAction = .clear
-//        renderPassDescriptor1.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
-//        renderPassDescriptor1.depthAttachment.loadAction = .clear
-//        renderPassDescriptor.depthAttachment.clearDepth = 1
-//        guard let renderEncoder1 = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor1) else {return}
 //
-//        
-//        renderEncoder1.setRenderPipelineState(renderCubeMapReflection!.m_pipeLine)
-//        renderEncoder1.setDepthStencilState(depthStencilState)
-//        renderEncoder1.setFragmentSamplerState(sampler, index: 0)
-//        renderEncoder1.setFrontFacing(.counterClockwise)
-//        renderEncoder1.setCullMode(.back)
-//        
-//        reflectiveCubeMesh?.draw(renderEncoder: renderEncoder1)
-//        
-//        cubeFinalPassTransform = Transforms(Scale: simd_float4x4(scale: simd_float3(1)), Translate: simd_float4x4(translate: simd_float3(0,0,-5)), Rotation: simd_float4x4(rotationXYZ: simd_float3(0,Float(self.fps)*0.1,0)), Projection: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100), Camera: simd_float4x4(eye: simd_float3(0), center: simd_float3(0,0,-1), up: simd_float3(0,1,0)))
-//        finalCubeMesh?.updateUniformBuffer(with: &cubeFinalPassTransform)
-//        renderEncoder1.setRenderPipelineState(simplePipeline!.m_pipeLine)
-//        finalCubeMesh?.draw(renderEncoder: renderEncoder1)
-//        
-//        renderEncoder1.setRenderPipelineState(skyboxPipeline!.m_pipeLine)
-//        renderEncoder1.setFrontFacing(.counterClockwise)
-//        renderEncoder1.setCullMode(.front)
-//        
-//        finalPassSkyBoxMesh?.draw(renderEncoder: renderEncoder1)
-//        
-//        renderEncoder1.endEncoding()
-//        
-//       
-// 
-//        
 //        commandBuffer.present(view.currentDrawable!)
 //        commandBuffer.commit()
        

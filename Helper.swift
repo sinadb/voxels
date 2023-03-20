@@ -98,7 +98,12 @@ class Mesh{
     var vertexBuffer : MTLBuffer?
     var indexBuffer : MTLBuffer?
     var Mesh : MTKMesh?
-    var instanceData : [Float]?
+    var instanceTransformData = [Transforms]()
+    var instanceColourData = [simd_float4]()
+    var instanceTransformModeData = [Int]()
+    var instaceTransformBuffer : MTLBuffer?
+    var instanceColourBuffer : MTLBuffer?
+    var instanceTransformModeBuffer : MTLBuffer?
     var instanceBuffer : MTLBuffer?
     
     func initaliseBuffers(){
@@ -160,10 +165,31 @@ class Mesh{
         initaliseBuffers()
     }
     
-    func addInsanceData(with offsets : [Float]){
-        instanceData = offsets
-        instanceBuffer = device.makeBuffer(bytes: instanceData!, length: MemoryLayout<Float>.stride*offsets.count, options: [])
+    func createInstance(with transforms : Transforms..., and colour : simd_float4..., add transformMode : Int...){
+        for t in transforms {
+            instanceTransformData.append(t)
+        }
+        for c in colour{
+            instanceColourData.append(c)
+        }
+        for mode in transformMode {
+            instanceTransformModeData.append(mode)
+        }
     }
+    func init_instance_buffers(){
+        instanceColourBuffer = device.makeBuffer(bytes: &instanceColourData, length: MemoryLayout<simd_float4>.stride*instanceColourData.count, options: [])
+        instaceTransformBuffer = device.makeBuffer(bytes: &instanceTransformData, length: MemoryLayout<Transforms>.stride*instanceTransformData.count, options: [])
+        instanceTransformModeBuffer = device.makeBuffer(bytes: &instanceTransformModeData, length: MemoryLayout<Int>.stride*instanceTransformModeData.count, options: [])
+        let transformBuffer = UniformBuffer(buffer: instaceTransformBuffer!, index: vertexBufferIDs.uniformBuffers)
+        let colourBuffer = UniformBuffer(buffer: instanceColourBuffer!, index: vertexBufferIDs.colour)
+        let transformModeBuffer = UniformBuffer(buffer: instanceTransformModeBuffer!, index: vertexBufferIDs.order_of_rot_tran)
+        add_uniform_buffer(buffers: colourBuffer,transformBuffer,transformModeBuffer)
+    }
+    
+//    func addInsanceData(with offsets : [Float]){
+//        instanceData = offsets
+//        instanceBuffer = device.makeBuffer(bytes: instanceData!, length: MemoryLayout<Float>.stride*offsets.count, options: [])
+//    }
     
     func updateUniformBuffer(with newData : inout Transforms){
         for buffer in uniformBuffersArray {
@@ -173,10 +199,28 @@ class Mesh{
         }
         
     }
+    func updateUniformBuffer(with newData : inout Transforms, at offset : Int){
+        for buffer in uniformBuffersArray {
+            if (buffer.index == vertexBufferIDs.uniformBuffers){
+                buffer.buffer.contents().advanced(by: offset * MemoryLayout<Transforms>.stride).copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride)
+            }
+        }
+        
+    }
+    
     func updateUniformBuffer(with newData : inout [Transforms]){
         for buffer in uniformBuffersArray {
             if (buffer.index == vertexBufferIDs.uniformBuffers){
                 buffer.buffer.contents().copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride*newData.count)
+            }
+        }
+        
+    }
+    
+    func updateUniformBuffer(with newData : inout [Transforms], at offset : Int){
+        for buffer in uniformBuffersArray {
+            if (buffer.index == vertexBufferIDs.uniformBuffers){
+                buffer.buffer.contents().advanced(by: offset * MemoryLayout<Transforms>.stride*6).copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride*6)
             }
         }
         

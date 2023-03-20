@@ -21,7 +21,8 @@ enum class vertexBufferIDs : int {
     uniformBuffers = 1,
     skyMap = 3,
     order_of_rot_tran = 4,
-    camera_origin = 5
+    camera_origin = 5,
+    colour = 6
     
 };
 enum class textureIDs : int {
@@ -51,7 +52,6 @@ struct VertexIn{
     simd_float4 pos [[attribute(0)]];
     simd_float3 normal [[attribute(1)]];
     simd_float2 tex [[attribute(2)]];
-    simd_float3 instance_offset[[attribute(3)]];
     
 };
 struct VertexOut{
@@ -80,7 +80,8 @@ struct VertexOutCube{
 };
 
 vertex VertexOutCube render_to_cube_vertex(VertexIn in [[stage_in]],
-                                           constant Transforms *transform [[buffer(vertexBufferIDs::uniformBuffers)]],
+                                           device Transforms *transform [[buffer(vertexBufferIDs::uniformBuffers)]],
+                                           device simd_float4* colour_out [[buffer(vertexBufferIDs::colour)]],
                                            uint index [[instance_id]],
                                            constant bool &is_skymap [[buffer(vertexBufferIDs::skyMap)]],
                                            constant int &transform_mode [[buffer(vertexBufferIDs::order_of_rot_tran)]]
@@ -101,14 +102,14 @@ vertex VertexOutCube render_to_cube_vertex(VertexIn in [[stage_in]],
     }
     out.tex = in.tex;
     out.tex_3 = normalize(in.pos.xyz);
-    out.face = index;
+    out.face = index%6;
+    out.colour = colour_out[index];
     return out;
 }
 
 fragment float4 render_to_cube_fragment(VertexOutCube in [[stage_in]],
                                         texturecube<float> cubeMap [[texture(textureIDs::cubeMap)]],
                                             texture2d<float> flatMap [[texture(textureIDs::flat)]],
-                                            constant float4 &colour [[buffer(fragmentBufferIDs::colours)]],
                                                                                constant bool &has_cube [[buffer(3)]],
                                                                                constant bool &has_flat [[buffer(4)]],
                                                                                constant bool &has_colour [[buffer(5)]],
@@ -125,7 +126,7 @@ fragment float4 render_to_cube_fragment(VertexOutCube in [[stage_in]],
                 return flatMap.sample(textureSampler,in.tex);
             }
             else {
-                return colour;
+                return in.colour;
             }
         case 1:
             if(has_cube){
@@ -135,7 +136,7 @@ fragment float4 render_to_cube_fragment(VertexOutCube in [[stage_in]],
                 return flatMap.sample(textureSampler,in.tex);
             }
             else {
-                return colour;
+                return in.colour;
             }
         case 2:
             if(has_cube){
@@ -145,7 +146,7 @@ fragment float4 render_to_cube_fragment(VertexOutCube in [[stage_in]],
                 return flatMap.sample(textureSampler,in.tex);
             }
             else {
-                return colour;
+                return in.colour;
             }
         case 3:
             if(has_cube){
@@ -155,7 +156,7 @@ fragment float4 render_to_cube_fragment(VertexOutCube in [[stage_in]],
                 return flatMap.sample(textureSampler,in.tex);
             }
             else {
-                return colour;
+                return in.colour;
             }
         case 4:
             if(has_cube){
@@ -165,7 +166,7 @@ fragment float4 render_to_cube_fragment(VertexOutCube in [[stage_in]],
                 return flatMap.sample(textureSampler,in.tex);
             }
             else {
-                return colour;
+                return in.colour;
             }
         case 5:
             if(has_cube){
@@ -175,7 +176,7 @@ fragment float4 render_to_cube_fragment(VertexOutCube in [[stage_in]],
                 return flatMap.sample(textureSampler,in.tex);
             }
             else {
-                return colour;
+                return in.colour;
             }
         default:
             if(has_cube){
@@ -185,7 +186,7 @@ fragment float4 render_to_cube_fragment(VertexOutCube in [[stage_in]],
                 return flatMap.sample(textureSampler,in.tex);
             }
             else {
-                return colour;
+                return in.colour;
             }
     }
 }
@@ -194,16 +195,20 @@ fragment float4 render_to_cube_fragment(VertexOutCube in [[stage_in]],
 
 
 vertex VertexOut simple_shader_vertex(VertexIn in [[stage_in]],
-                                      constant Transforms &transforms [[buffer(vertexBufferIDs::uniformBuffers)]],
-                                      constant int &transform_mode[[buffer(vertexBufferIDs::order_of_rot_tran)]]
+                                      constant Transforms* transforms [[buffer(vertexBufferIDs::uniformBuffers)]],
+                                      constant int &transform_mode[[buffer(vertexBufferIDs::order_of_rot_tran)]],
+                                      device simd_float4* colour_out [[buffer(vertexBufferIDs::colour)]],
+                                      uint index [[instance_id]]
                             ){
     VertexOut out;
+    out.colour = colour_out[index];
+    Transforms current_transform = transforms[index];
     if(transform_mode == transformation_mode::translate_first){
-        out.pos = post_transform_translate_first(transforms, in.pos);
+        out.pos = post_transform_translate_first(current_transform, in.pos);
 
     }
     else {
-        out.pos = post_transform_rotate_first(transforms, in.pos);
+        out.pos = post_transform_rotate_first(current_transform, in.pos);
 
     }
     if(is_sky_box){
@@ -229,8 +234,11 @@ fragment float4 simple_shader_fragment(VertexOut in [[stage_in]],
     else if(flat){
         return flatMap.sample(textureSampler, in.tex);
     }
-    else{
+    else if(no_texture){
         return colour;
+    }
+    else {
+        return in.colour;
     }
     
 }
@@ -246,12 +254,12 @@ vertex VertexOut cubeMap_reflection_vertex(VertexIn in [[stage_in]],
         out.pos = post_transform_translate_first(transforms, in.pos);
 //        out.world_pos = float3(transforms.Camera*transforms.Rotation*transforms.Translate*transforms.Scale*in.pos);
         out.world_pos = float3(transforms.Rotation*transforms.Translate*transforms.Scale*in.pos) - eye;
-        out.normal = normalize(float3(transforms.Camera*transforms.Translate*transforms.Rotation*transforms.Scale*float4(in.normal,0)));
+        out.normal = normalize(float3(transforms.Translate*transforms.Rotation*transforms.Scale*float4(in.normal,0)));
     }
     else {
         out.pos = post_transform_rotate_first(transforms, in.pos);
         out.world_pos = float3(transforms.Translate*transforms.Rotation*transforms.Scale*in.pos) - eye;
-        out.normal = normalize(float3(transforms.Camera*transforms.Translate*transforms.Rotation*transforms.Scale*float4(in.normal,0)));
+        out.normal = normalize(float3(transforms.Translate*transforms.Rotation*transforms.Scale*float4(in.normal,0)));
 
     }
     

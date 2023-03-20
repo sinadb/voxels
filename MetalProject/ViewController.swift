@@ -20,7 +20,7 @@ class ViewController: NSViewController {
             if let origin = cameraOrigin, let direction = cameraDirection {
                // print(origin,direction)
                 var camera = simd_float4x4(eye: origin, center: direction, up: simd_float3(0,1,0))
-                renderer.currentScene.updateCamera(with: camera)
+                //renderer.currentScene.updateCamera(with: camera)
                 self.renderer.currentScene.eye = origin
                 self.renderer.currentScene.direction = direction
             }
