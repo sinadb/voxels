@@ -22,7 +22,8 @@ enum class vertexBufferIDs : int {
     skyMap = 3,
     order_of_rot_tran = 4,
     camera_origin = 5,
-    colour = 6
+    colour = 6,
+    points_in_sphere = 7
     
 };
 enum class textureIDs : int {
@@ -38,6 +39,7 @@ constant bool cube [[function_constant(0)]];
 constant bool flat [[function_constant(1)]];
 constant bool no_texture [[function_constant(2)]];
 constant bool is_sky_box [[function_constant(3)]];
+constant bool fuzzy [[function_constant(4)]];
 
 float4 post_transform_rotate_first(Transforms t, float4 pos){
     return t.Projection*t.Camera*t.Translate*t.Rotation*t.Scale*pos;
@@ -269,9 +271,20 @@ vertex VertexOut cubeMap_reflection_vertex(VertexIn in [[stage_in]],
 
 fragment float4 cubeMap_reflection_fragment(VertexOut in [[stage_in]],
                                             texturecube<float> cubeMap [[texture(textureIDs::cubeMap)]],
-                                            sampler textureSampler [[sampler(0)]]
+                                            sampler textureSampler [[sampler(0)]],
+                                            constant simd_float3* random_offsets [[buffer(vertexBufferIDs::points_in_sphere), function_constant(fuzzy)]]
                                             ){
     float3 incident = normalize(in.world_pos);
+    if(fuzzy){
+        float4 final_colour = simd_float4(0);
+        for(int i = 0; i!=20; i++){
+            float3 reflection_vector = reflect(incident, in.normal);
+            reflection_vector.y *= -1.0;
+            reflection_vector += 0.03*random_offsets[i];
+            final_colour += cubeMap.sample(textureSampler, reflection_vector);
+        }
+        return final_colour/20.0;
+    }
     float3 reflection_vector = reflect(incident, in.normal);
     reflection_vector.y *= -1.0;
     return cubeMap.sample(textureSampler, reflection_vector);

@@ -20,6 +20,7 @@ struct vertexBufferIDs {
     static let order_of_rot_tran = 4
     static let camera_origin = 5
     static let colour = 6
+    static let points_in_sphere = 7
 }
 
 struct textureIDs {

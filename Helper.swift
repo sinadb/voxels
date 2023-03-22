@@ -36,6 +36,29 @@ func createBuffersForRenderToCube(scale : simd_float3 , rotation : simd_float3 ,
        
 }
 
+func createBuffersForRenderToCube(scale : simd_float3 , rotation : simd_float3 , translate : simd_float3 , from cameras : [simd_float4x4] ) -> [Transforms] {
+    
+    let projection = simd_float4x4(fovRadians: 3.14/2, aspectRatio: 1, near: 0.1, far: 100)
+    let scale = simd_float4x4(scale: scale)
+    let rotation = simd_float4x4(rotationXYZ: rotation)
+    let translation = simd_float4x4(translate: translate)
+    
+    let out = [Transforms(Scale: scale, Translate: translation, Rotation: rotation, Projection: projection, Camera: cameras[0]),
+               
+        Transforms(Scale: scale, Translate: translation, Rotation: rotation, Projection: projection, Camera: cameras[1]),
+               
+        Transforms(Scale: scale, Translate: translation, Rotation: rotation, Projection: projection, Camera: cameras[2]),
+               
+        Transforms(Scale: scale, Translate: translation, Rotation: rotation, Projection: projection, Camera: cameras[3]),
+               
+        Transforms(Scale: scale, Translate: translation, Rotation: rotation, Projection: projection, Camera: cameras[4]),
+               
+        Transforms(Scale: scale, Translate: translation, Rotation: rotation, Projection: projection, Camera: cameras[5])
+                                           ]
+            return out
+       
+}
+
 
 func createBuffersForRenderToCube() -> [Transforms] {
     
@@ -183,7 +206,8 @@ class Mesh{
         let transformBuffer = UniformBuffer(buffer: instaceTransformBuffer!, index: vertexBufferIDs.uniformBuffers)
         let colourBuffer = UniformBuffer(buffer: instanceColourBuffer!, index: vertexBufferIDs.colour)
         let transformModeBuffer = UniformBuffer(buffer: instanceTransformModeBuffer!, index: vertexBufferIDs.order_of_rot_tran)
-        add_uniform_buffer(buffers: colourBuffer,transformBuffer,transformModeBuffer)
+        add_uniform_buffer(buffers: colourBuffer,transformModeBuffer)
+        uniformBuffersArray.insert(transformBuffer, at: 0)
     }
     
 //    func addInsanceData(with offsets : [Float]){
@@ -200,11 +224,12 @@ class Mesh{
         
     }
     func updateUniformBuffer(with newData : inout Transforms, at offset : Int){
-        for buffer in uniformBuffersArray {
-            if (buffer.index == vertexBufferIDs.uniformBuffers){
-                buffer.buffer.contents().advanced(by: offset * MemoryLayout<Transforms>.stride).copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride)
-            }
-        }
+//        for buffer in uniformBuffersArray {
+//            if (buffer.index == vertexBufferIDs.uniformBuffers){
+//                buffer.buffer.contents().advanced(by: offset * MemoryLayout<Transforms>.stride).copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride)
+//            }
+//        }
+        uniformBuffersArray[0].buffer.contents().advanced(by: offset * MemoryLayout<Transforms>.stride).copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride)
         
     }
     
@@ -218,12 +243,12 @@ class Mesh{
     }
     
     func updateUniformBuffer(with newData : inout [Transforms], at offset : Int){
-        for buffer in uniformBuffersArray {
-            if (buffer.index == vertexBufferIDs.uniformBuffers){
-                buffer.buffer.contents().advanced(by: offset * MemoryLayout<Transforms>.stride*6).copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride*6)
-            }
-        }
-        
+//        for buffer in uniformBuffersArray {
+//            if (buffer.index == vertexBufferIDs.uniformBuffers){
+//                buffer.buffer.contents().advanced(by: offset * MemoryLayout<Transforms>.stride*6).copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride*6)
+//            }
+//        }
+        uniformBuffersArray[0].buffer.contents().advanced(by: offset * MemoryLayout<Transforms>.stride*6).copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride*6)
     }
     
     func updateTexture(with new_texture : Texture){
