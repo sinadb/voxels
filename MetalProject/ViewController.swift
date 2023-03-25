@@ -9,6 +9,10 @@ import Cocoa
 import Metal
 import MetalKit
 
+
+var mouse_x : Float?
+var mouse_y : Float?
+
 class ViewController: NSViewController {
     
     var cameraOrigin : simd_float3?
@@ -104,9 +108,46 @@ class ViewController: NSViewController {
     }
     var mtkView: MTKView!
     var renderer: Renderer!
-
+    
+    override func mouseMoved(with event: NSEvent) {
+//        if mouse_x == nil && mouse_y == nil {
+//            mouse_x = Float(event.locationInWindow.x)
+//            mouse_y = Float(event.locationInWindow.y)
+//            renderer.testCamera.previous_x = mouse_x
+//            renderer.testCamera.previous_y = mouse_y
+//        }
+//        else {
+//            //print(event.locationInWindow.y,event.locationInWindow.x)
+//            mouse_x = Float(event.locationInWindow.x)
+//            mouse_y = Float(event.locationInWindow.y)
+//            renderer.testCamera.update()
+//        }
+    }
+    override func mouseUp(with event: NSEvent) {
+        if let _ = mouse_x, let _ = mouse_y {
+            mouse_x = nil
+            mouse_y = nil
+        }
+    }
+    override func mouseDragged(with event: NSEvent) {
+        if mouse_x == nil && mouse_y == nil {
+            mouse_x = Float(event.locationInWindow.x)
+            mouse_y = Float(event.locationInWindow.y)
+            renderer.testCamera.previous_x = mouse_x
+            renderer.testCamera.previous_y = mouse_y
+        }
+        else {
+            //print(event.locationInWindow.y,event.locationInWindow.x)
+            mouse_x = Float(event.locationInWindow.x)
+            mouse_y = Float(event.locationInWindow.y)
+            renderer.testCamera.update()
+        }
+    }
     override func viewDidLoad() {
         super.viewDidLoad()
+        let ta = NSTrackingArea(rect: CGRect.zero, options: [.activeAlways, .inVisibleRect, .mouseMoved], owner: self, userInfo: nil)
+        self.view.addTrackingArea(ta)
+        
         
         
         // First we save the MTKView to a convenient instance variable

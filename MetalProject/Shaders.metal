@@ -28,7 +28,8 @@ enum class vertexBufferIDs : int {
 };
 enum class textureIDs : int {
     cubeMap  = 0,
-    flat = 1
+    flat = 1,
+    Normal = 2,
 };
 
 enum class fragmentBufferIDs : int {
@@ -40,6 +41,7 @@ constant bool flat [[function_constant(1)]];
 constant bool no_texture [[function_constant(2)]];
 constant bool is_sky_box [[function_constant(3)]];
 constant bool fuzzy [[function_constant(4)]];
+constant bool has_normal_map [[function_constant(5)]];
 
 float4 post_transform_rotate_first(Transforms t, float4 pos){
     return t.Projection*t.Camera*t.Translate*t.Rotation*t.Scale*pos;
@@ -54,15 +56,22 @@ struct VertexIn{
     simd_float4 pos [[attribute(0)]];
     simd_float3 normal [[attribute(1)]];
     simd_float2 tex [[attribute(2)]];
+    simd_float4 tangent [[attribute(3)]];
+    simd_float4 bitangent [[attribute(4)]];
     
 };
 struct VertexOut{
+   
     float4 pos [[position]];
     float4 colour;
     float3 normal;
     float2 tex;
     float3 tex_3;
     float3 world_pos;
+    float3 tangent;
+    float3 bitangent;
+   
+    
     
     
 };
@@ -205,12 +214,22 @@ vertex VertexOut simple_shader_vertex(VertexIn in [[stage_in]],
     VertexOut out;
     out.colour = colour_out[index];
     Transforms current_transform = transforms[index];
+    out.tangent = normalize(simd_float3(current_transform.Rotation*current_transform.Scale*in.tangent));
+    
+    out.normal = normalize((current_transform.Rotation*float4(in.normal,0)).xyz);
+    //out.bitangent = normalize(simd_float3(current_transform.Rotation*float4(in.bitangent,0)));
+//    out.TBN = simd_float3x3(tangent,bitangent,normal);
+    out.bitangent = normalize(cross(out.normal, out.tangent));
+   
+//
     if(transform_mode == transformation_mode::translate_first){
         out.pos = post_transform_translate_first(current_transform, in.pos);
+        out.world_pos = (current_transform.Rotation*current_transform.Translate*current_transform.Scale*in.pos).xyz;
 
     }
     else {
         out.pos = post_transform_rotate_first(current_transform, in.pos);
+        out.world_pos = (current_transform.Translate*current_transform.Rotation*current_transform.Scale*in.pos).xyz;
 
     }
     if(is_sky_box){
@@ -226,10 +245,31 @@ vertex VertexOut simple_shader_vertex(VertexIn in [[stage_in]],
 fragment float4 simple_shader_fragment(VertexOut in [[stage_in]],
                                        texturecube<float> cubeMap [[texture(textureIDs::cubeMap),function_constant(cube)]],
                                        texture2d<float> flatMap [[texture(textureIDs::flat),function_constant(flat)]],
+                                       texture2d<float> normalMap
+                                       [[texture(textureIDs::Normal),function_constant(has_normal_map)]],
                                        sampler textureSampler [[sampler(0)]],
                                        constant float4 &colour [[buffer(fragmentBufferIDs::colours),function_constant(no_texture)]]
                                        ){
     
+    simd_float3 light_pos = simd_float3(30,0,0);
+    simd_float3 light_vector = normalize(light_pos - in.world_pos);
+    //light_vector = simd_float3(1,0,0);
+    if(has_normal_map){
+        simd_float3 colour = flatMap.sample(textureSampler, in.tex).rgb;
+        simd_float3 tangent = normalize(in.tangent - dot(in.tangent, in.normal) * in.normal);
+        simd_float3 bitangent = normalize(cross(in.normal, tangent));
+        simd_float3x3 TBN = simd_float3x3(normalize(tangent),bitangent,normalize(in.normal));
+        float3 normal = (normalMap.sample(textureSampler, in.tex)).rgb;
+        normal = (normal * 2.0 - 1.0);
+        normal.xy *= 30.0;
+        normal = normalize(normal);
+        //normal = normalize(simd_float3(0.3,0,1));
+        normal = normalize(TBN * normal);
+        float attenuation = saturate(saturate(dot(light_vector,normal)) + 0.5);
+        //return float4(normal,1);
+        return float4(attenuation*colour,1);
+        
+    }
     if(cube){
         return cubeMap.sample(textureSampler, in.tex_3);
     }
@@ -280,7 +320,7 @@ fragment float4 cubeMap_reflection_fragment(VertexOut in [[stage_in]],
         for(int i = 0; i!=20; i++){
             float3 reflection_vector = reflect(incident, in.normal);
             reflection_vector.y *= -1.0;
-            reflection_vector += 0.03*random_offsets[i];
+            reflection_vector += 0.1*random_offsets[i];
             final_colour += cubeMap.sample(textureSampler, reflection_vector);
         }
         return final_colour/20.0;

@@ -88,6 +88,7 @@ struct UniformBuffer {
     let buffer : MTLBuffer
     let index : Int
     var functionType : MTLFunctionType?
+    var count : Int?
 }
 
 
@@ -112,7 +113,7 @@ func createVertexDescriptor(attributes : Attribute...) -> MTLVertexDescriptor {
 
 class Mesh{
     
-    
+    var MeshCamera : Camera?
     var uniformBuffersArray = [UniformBuffer]()
     var texturesArray = [Texture]()
     let device : MTLDevice
@@ -128,6 +129,7 @@ class Mesh{
     var instanceColourBuffer : MTLBuffer?
     var instanceTransformModeBuffer : MTLBuffer?
     var instanceBuffer : MTLBuffer?
+    var no_instances = 0
     
     func initaliseBuffers(){
         if Mesh != nil{
@@ -151,6 +153,11 @@ class Mesh{
         var out = UniformBuffer(buffer: buffer, index: index,functionType: function)
         add_uniform_buffer(buffers: out)
         
+    }
+    
+    func attach_camera_to_mesh(to camera : Camera){
+        MeshCamera = camera
+        MeshCamera?.transformBuffer.append(uniformBuffersArray[0])
     }
     
     func add_uniform_buffer(buffers : UniformBuffer...){
@@ -191,6 +198,7 @@ class Mesh{
     func createInstance(with transforms : Transforms..., and colour : simd_float4..., add transformMode : Int...){
         for t in transforms {
             instanceTransformData.append(t)
+            no_instances += 1
         }
         for c in colour{
             instanceColourData.append(c)
@@ -203,7 +211,7 @@ class Mesh{
         instanceColourBuffer = device.makeBuffer(bytes: &instanceColourData, length: MemoryLayout<simd_float4>.stride*instanceColourData.count, options: [])
         instaceTransformBuffer = device.makeBuffer(bytes: &instanceTransformData, length: MemoryLayout<Transforms>.stride*instanceTransformData.count, options: [])
         instanceTransformModeBuffer = device.makeBuffer(bytes: &instanceTransformModeData, length: MemoryLayout<Int>.stride*instanceTransformModeData.count, options: [])
-        let transformBuffer = UniformBuffer(buffer: instaceTransformBuffer!, index: vertexBufferIDs.uniformBuffers)
+        let transformBuffer = UniformBuffer(buffer: instaceTransformBuffer!, index: vertexBufferIDs.uniformBuffers, count: no_instances)
         let colourBuffer = UniformBuffer(buffer: instanceColourBuffer!, index: vertexBufferIDs.colour)
         let transformModeBuffer = UniformBuffer(buffer: instanceTransformModeBuffer!, index: vertexBufferIDs.order_of_rot_tran)
         add_uniform_buffer(buffers: colourBuffer,transformModeBuffer)
@@ -218,6 +226,9 @@ class Mesh{
     func updateUniformBuffer(with newData : inout Transforms){
         for buffer in uniformBuffersArray {
             if (buffer.index == vertexBufferIDs.uniformBuffers){
+                if let camera = MeshCamera {
+                    newData.Camera = simd_float4x4(eye: camera.eye, center: camera.eye + camera.centre, up: simd_float3(0,1,0))
+                }
                 buffer.buffer.contents().copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride)
             }
         }
@@ -229,6 +240,9 @@ class Mesh{
 //                buffer.buffer.contents().advanced(by: offset * MemoryLayout<Transforms>.stride).copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride)
 //            }
 //        }
+        if let camera = MeshCamera {
+            newData.Camera = simd_float4x4(eye: camera.eye, center: camera.eye + camera.centre, up: simd_float3(0,1,0))
+        }
         uniformBuffersArray[0].buffer.contents().advanced(by: offset * MemoryLayout<Transforms>.stride).copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride)
         
     }
@@ -384,7 +398,7 @@ class pipeLine {
 
         library = device.makeDefaultLibrary()!
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
-        pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm_srgb
+        pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
         pipelineDescriptor.depthAttachmentPixelFormat = .depth32Float
        
             pipelineDescriptor.vertexFunction = try! library.makeFunction(name: vertexFunctionName, constantValues: functionConstant)

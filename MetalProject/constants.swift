@@ -26,6 +26,7 @@ struct vertexBufferIDs {
 struct textureIDs {
     static let cubeMap  = 0
     static let flat = 1
+    static let Normal = 2
 }
 
 struct fragmentBufferIDs {

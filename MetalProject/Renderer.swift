@@ -108,18 +108,23 @@ class skyBoxScene {
     var sampler : MTLSamplerState
     var cameras = [simd_float4x4]()
     var random_vectors_buffer : MTLBuffer?
+   
     
     func initiatePipeline(){
         let posAttrib = Attribute(format: .float4, offset: 0, length: 16, bufferIndex: 0)
         let normalAttrib = Attribute(format: .float3, offset: MemoryLayout<Float>.stride*4,length: 12, bufferIndex: 0)
         let texAttrib = Attribute(format: .float2, offset: MemoryLayout<Float>.stride*7, length : 8, bufferIndex: 0)
+        let tangentAttrib = Attribute(format: .float4, offset: MemoryLayout<Float>.stride*9, length: 16, bufferIndex: 0)
+        let bitangentAttrib = Attribute(format: .float4, offset: MemoryLayout<Float>.stride*13, length: 16, bufferIndex: 0)
         
         let instanceAttrib = Attribute(format : .float3, offset: 0, length : 12, bufferIndex: 1)
-        let vertexDescriptor = createVertexDescriptor(attributes: posAttrib,normalAttrib,texAttrib)
+        let vertexDescriptor = createVertexDescriptor(attributes: posAttrib,normalAttrib,texAttrib,tangentAttrib,bitangentAttrib)
         
         renderToCubePipeline  = pipeLine(device, "render_to_cube_vertex", "render_to_cube_fragment", vertexDescriptor, true)!
         
         let simplePipelineFC = functionConstant()
+        simplePipelineFC.setValue(type: .bool, value: &False)
+        simplePipelineFC.setValue(type: .bool, value: &False)
         simplePipelineFC.setValue(type: .bool, value: &False)
         simplePipelineFC.setValue(type: .bool, value: &False)
         simplePipelineFC.setValue(type: .bool, value: &False)
@@ -144,6 +149,7 @@ class skyBoxScene {
         skyboxFunctionConstants.setValue(type: .bool, value: &False, at: 1)
         skyboxFunctionConstants.setValue(type: .bool, value: &False, at: 2)
         skyboxFunctionConstants.setValue(type: .bool, value: &True, at: 3)
+        skyboxFunctionConstants.setValue(type: .bool, value: &False, at: 5)
         
         renderSkyboxPipeline = pipeLine(device, "simple_shader_vertex", "simple_shader_fragment", vertexDescriptor, skyboxFunctionConstants.functionConstant)!
         
@@ -183,13 +189,13 @@ class skyBoxScene {
         let samplerDescriptor = MTLSamplerDescriptor()
         samplerDescriptor.magFilter = .nearest
         samplerDescriptor.minFilter = .nearest
-        samplerDescriptor.rAddressMode = .clampToEdge
-        samplerDescriptor.sAddressMode = .clampToEdge
-        samplerDescriptor.tAddressMode = .clampToEdge
+        samplerDescriptor.rAddressMode = .repeat
+        samplerDescriptor.sAddressMode = .repeat
+        samplerDescriptor.tAddressMode = .repeat
         samplerDescriptor.normalizedCoordinates = true
         sampler = device.makeSamplerState(descriptor: samplerDescriptor)!
         
-        random_vectors_buffer = device.makeBuffer(bytes: create_random_points_in_sphere(for: 20), length: MemoryLayout<simd_float3>.stride*20, options: [])
+        random_vectors_buffer = device.makeBuffer(bytes: create_random_points_in_sphere(for: 200), length: MemoryLayout<simd_float3>.stride*200, options: [])
         
         initiatePipeline()
         initialiseRenderTarget()
@@ -471,7 +477,7 @@ class skyBoxScene {
 
 class Renderer : NSObject, MTKViewDelegate {
     
-    
+    var testCamera : Camera
     let testPipeline : pipeLine?
     var testMesh : Mesh?
     
@@ -548,16 +554,20 @@ class Renderer : NSObject, MTKViewDelegate {
     var flatTextureDepth : MTLTexture?
     
     var testMeshes = [Mesh]()
+    var BrickWallTextureN : MTLTexture?
+    var BrickWallTextureD : MTLTexture?
     
     init?(mtkView: MTKView){
       
-        
+       
+        let rotate = simd_float4x4(rotationX: -90)
+        print(rotate*simd_float4(0,0,-1,1))
         device = mtkView.device!
         mtkView.preferredFramesPerSecond = 120
         
         commandQueue = device.makeCommandQueue()!
         
-        mtkView.colorPixelFormat = .bgra8Unorm_srgb
+        mtkView.colorPixelFormat = .bgra8Unorm
         mtkView.depthStencilPixelFormat = .depth32Float
         
         let cubeTextureOptions: [MTKTextureLoader.Option : Any] = [
@@ -565,6 +575,13 @@ class Renderer : NSObject, MTKViewDelegate {
           .textureStorageMode : MTLStorageMode.private.rawValue,
           .cubeLayout : MTKTextureLoader.CubeLayout.vertical
         ]
+        let flatTextureLoaderOptions : [MTKTextureLoader.Option : Any] = [
+            .textureUsage : MTLTextureUsage.shaderRead.rawValue,
+            .textureStorageMode : MTLStorageMode.private.rawValue,
+            .SRGB : False
+                
+        ]
+        
         let textureLoader = MTKTextureLoader(device: device)
         
         do {
@@ -577,6 +594,17 @@ class Renderer : NSObject, MTKViewDelegate {
             print(error)
         }
         
+        
+        do {
+            try BrickWallTextureN = textureLoader.newTexture(name: "BrickWallN", scaleFactor: 1.0, bundle: nil, options: flatTextureLoaderOptions)
+            try BrickWallTextureD = textureLoader.newTexture(name: "BrickWallD", scaleFactor: 1.0, bundle: nil)
+            try
+            print("Brick wall texture loaded")
+        }
+        catch{
+            print("Failed to load brickwall texture")
+            print("erro")
+        }
         // set up states of skymap
         
         
@@ -614,9 +642,11 @@ class Renderer : NSObject, MTKViewDelegate {
         let posAttrib = Attribute(format: .float4, offset: 0, length: 16, bufferIndex: 0)
         let normalAttrib = Attribute(format: .float3, offset: MemoryLayout<Float>.stride*4,length: 12, bufferIndex: 0)
         let texAttrib = Attribute(format: .float2, offset: MemoryLayout<Float>.stride*7, length : 8, bufferIndex: 0)
+        let tangentAttrib = Attribute(format: .float4, offset: MemoryLayout<Float>.stride*9, length : 16, bufferIndex: 0)
+        let bitangentAttrib = Attribute(format: .float4, offset: MemoryLayout<Float>.stride*13, length : 16, bufferIndex: 0)
        
         let instanceAttrib = Attribute(format : .float3, offset: 0, length : 12, bufferIndex: 1)
-        let vertexDescriptor = createVertexDescriptor(attributes: posAttrib,normalAttrib,texAttrib)
+        let vertexDescriptor = createVertexDescriptor(attributes: posAttrib,normalAttrib,texAttrib,tangentAttrib,bitangentAttrib)
         
         renderToCubePipeline  = pipeLine(device, "render_to_cube_vertex", "render_to_cube_fragment", vertexDescriptor, true)
 //        vertexDescriptor.attributes[3].offset = 0
@@ -633,6 +663,7 @@ class Renderer : NSObject, MTKViewDelegate {
         simplePipelineFC.setValue(type: .bool, value: &False)
         simplePipelineFC.setValue(type: .bool, value: &True)
         simplePipelineFC.setValue(type: .bool, value: &False)
+        simplePipelineFC.setValue(type: .bool, value: &False, at: 5)
         simplePipeline = pipeLine(device, "simple_shader_vertex", "simple_shader_fragment", vertexDescriptor, simplePipelineFC.functionConstant)
         
         
@@ -641,51 +672,56 @@ class Renderer : NSObject, MTKViewDelegate {
         
         
        // this one renders a skybox
-        let skyboxFunctionConstants = functionConstant()
-        skyboxFunctionConstants.setValue(type: .bool, value: &True, at: 0)
-        skyboxFunctionConstants.setValue(type: .bool, value: &False, at: 1)
-        skyboxFunctionConstants.setValue(type: .bool, value: &False, at: 2)
-        skyboxFunctionConstants.setValue(type: .bool, value: &True, at: 3)
-        
-        skyboxPipeline = pipeLine(device, "simple_shader_vertex", "simple_shader_fragment", vertexDescriptor, skyboxFunctionConstants.functionConstant)
-        
+      
         
         
         
         
         let allocator = MTKMeshBufferAllocator(device: device)
+        let planeMDLMesh = MDLMesh(planeWithExtent: simd_float3(1,1,1), segments: simd_uint2(1,1), geometryType: .triangles, allocator: allocator)
         let cubeMDLMesh = MDLMesh(boxWithExtent: simd_float3(1,1,1), segments: simd_uint3(1,1,1), inwardNormals: false, geometryType: .triangles, allocator: allocator)
         let circleMDLMesh = MDLMesh(sphereWithExtent: simd_float3(1,1,1), segments: simd_uint2(20,20), inwardNormals: False, geometryType: .triangles, allocator: allocator)
         let mdlMeshVD = MDLVertexDescriptor()
         mdlMeshVD.attributes[0] = MDLVertexAttribute(name: MDLVertexAttributePosition, format: .float4, offset: 0, bufferIndex: 0)
+        
         mdlMeshVD.attributes[1] = MDLVertexAttribute(name: MDLVertexAttributeNormal, format: .float3, offset: 16, bufferIndex: 0)
         mdlMeshVD.attributes[2] = MDLVertexAttribute(name: MDLVertexAttributeTextureCoordinate, format: .float2, offset: 28, bufferIndex: 0)
-        mdlMeshVD.layouts[0] = MDLVertexBufferLayout(stride: 36)
+        
+        mdlMeshVD.attributes[3] = MDLVertexAttribute(name: MDLVertexAttributeTangent, format: .float4, offset: 36, bufferIndex: 0)
+        
+        mdlMeshVD.attributes[4] = MDLVertexAttribute(name: MDLVertexAttributeBitangent, format: .float4, offset: 52, bufferIndex: 0)
+        mdlMeshVD.layouts[0] = MDLVertexBufferLayout(stride: 68)
+        circleMDLMesh.addTangentBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, tangentAttributeNamed: MDLVertexAttributeTangent, bitangentAttributeNamed: MDLVertexAttributeBitangent)
+        cubeMDLMesh.addTangentBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, tangentAttributeNamed: MDLVertexAttributeTangent, bitangentAttributeNamed: MDLVertexAttributeBitangent)
+        planeMDLMesh.addTangentBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, tangentAttributeNamed: MDLVertexAttributeTangent, bitangentAttributeNamed: MDLVertexAttributeBitangent)
         cubeMDLMesh.vertexDescriptor = mdlMeshVD
         circleMDLMesh.vertexDescriptor = mdlMeshVD
+        planeMDLMesh.vertexDescriptor = mdlMeshVD
         
         currentScene.addSkyBoxNode(with: Texture(texture: skyboxTexture!, index: textureIDs.cubeMap), mesh: cubeMDLMesh)
+        let c_r = Float.random(in: 0...1)
+                   let c_g = Float.random(in: 0...1)
+                    let c_b = Float.random(in: 0...1)
+        currentScene.addNodes(with : "Circle", mesh: circleMDLMesh, scale: simd_float3(1), translate: simd_float3(7,0,0), rotation: simd_float3(0), colour: simd_float4(c_r,c_g,c_b,1))
         
-       
-        
-        for i in 0...30{
-            let x_r = Float.random(in: -20...20)
-            let y_r = Float.random(in: -20...20)
-            let z_r = Float.random(in: -20...20)
-            
-            let c_r = Float.random(in: 0...1)
-            let c_g = Float.random(in: 0...1)
-            let c_b = Float.random(in: 0...1)
-            
-            if(i < 15){
-                currentScene.addNodes(with : "Cube", mesh: cubeMDLMesh, scale: simd_float3(1), translate: simd_float3(x_r,y_r,z_r), rotation: simd_float3(0), colour: simd_float4(c_r,c_g,c_b,1))
-            }
-            else {
-                currentScene.addNodes(with : "Circle", mesh: circleMDLMesh, scale: simd_float3(1), translate: simd_float3(x_r,y_r,z_r), rotation: simd_float3(0), colour: simd_float4(c_r,c_g,c_b,1))
-            }
-            
-        }
-        print(currentScene.nodeCounts)
+//        for i in 0...10{
+//            let x_r = Float.random(in: -20...20)
+//            let y_r = Float.random(in: -20...20)
+//            let z_r = Float.random(in: -20...20)
+//
+//            let c_r = Float.random(in: 0...1)
+//            let c_g = Float.random(in: 0...1)
+//            let c_b = Float.random(in: 0...1)
+//
+//            if(i < 1501){
+//                currentScene.addNodes(with : "Cube", mesh: cubeMDLMesh, scale: simd_float3(1), translate: simd_float3(x_r,y_r,z_r), rotation: simd_float3(0), colour: simd_float4(c_r,c_g,c_b,1))
+//            }
+//            else {
+//                currentScene.addNodes(with : "Circle", mesh: circleMDLMesh, scale: simd_float3(1), translate: simd_float3(x_r,y_r,z_r), rotation: simd_float3(0), colour: simd_float4(c_r,c_g,c_b,1))
+//            }
+//
+//        }
+        //print(currentScene.nodeCounts)
 //        currentScene.addNodes(with : "Cube", mesh: cubeMDLMesh, scale: simd_float3(1), translate: simd_float3(10,0,0), rotation: simd_float3(0), colour: simd_float4(1,0,0,1))
 //
 //        currentScene.addNodes(with : "Cube", mesh: cubeMDLMesh, scale: simd_float3(1), translate: simd_float3(-10,0,0), rotation: simd_float3(0), colour: simd_float4(0,1,1,1))
@@ -701,8 +737,8 @@ class Renderer : NSObject, MTKViewDelegate {
         
       
         let samplerDC = MTLSamplerDescriptor()
-        samplerDC.magFilter = .nearest
-        samplerDC.minFilter = .nearest
+        samplerDC.magFilter = .linear
+        samplerDC.minFilter = .linear
         samplerDC.rAddressMode = .clampToEdge
         samplerDC.sAddressMode = .clampToEdge
         samplerDC.tAddressMode = .clampToEdge
@@ -723,13 +759,23 @@ class Renderer : NSObject, MTKViewDelegate {
 //
         let testFCs = functionConstant()
         testFCs.setValue(type: .bool, value: &False, at: 0)
-        testFCs.setValue(type: .bool, value: &False, at: 1)
+        testFCs.setValue(type: .bool, value: &True, at: 1)
         testFCs.setValue(type: .bool, value: &False, at: 2)
         testFCs.setValue(type: .bool, value: &False, at: 3)
+        testFCs.setValue(type: .bool, value: &True, at: 5)
         
         testPipeline = pipeLine(device, "simple_shader_vertex", "simple_shader_fragment", vertexDescriptor, testFCs.functionConstant)
         
-//        testMesh = Mesh(device: device, Mesh: circleMDLMesh)
+        testCamera = Camera(for : mtkView, eye: simd_float3(0,0,0), centre: simd_float3(0,0,-1))
+        testMesh = Mesh(device: device, Mesh: cubeMDLMesh)
+        let transform = Transforms(Scale: simd_float4x4(scale: simd_float3(8)), Translate: simd_float4x4(translate: simd_float3(0,0,-20)), Rotation: simd_float4x4(rotationXYZ: simd_float3(0,0,0)), Projection: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100), Camera: simd_float4x4(eye: simd_float3(0,0,0), center: simd_float3(0,0,-1), up: simd_float3(0,1,0)))
+        let transform1 = Transforms(Scale: simd_float4x4(scale: simd_float3(4)), Translate: simd_float4x4(translate: simd_float3(-5,0,-10)), Rotation: simd_float4x4(rotationXYZ: simd_float3(0,0,0)), Projection: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100), Camera: simd_float4x4(eye: simd_float3(0,0,0), center: simd_float3(0,0,-1), up: simd_float3(0,1,0)))
+        testMesh?.createInstance(with: transform, and: simd_float4(1,0,0,1), add: rotateFirst)
+        testMesh?.createInstance(with: transform1, and: simd_float4(1,0,0,1), add: rotateFirst)
+        testMesh?.init_instance_buffers()
+        testMesh?.attach_camera_to_mesh(to: testCamera)
+        testMesh?.add_textures(textures: Texture(texture: BrickWallTextureN!, index: textureIDs.Normal))
+        testMesh?.add_textures(textures: Texture(texture: BrickWallTextureD!, index: textureIDs.flat))
 //        for _ in 0...3000 {
 //            let x_r = Float.random(in: -20...20)
 //            let y_r = Float.random(in: -20...20)
@@ -773,40 +819,60 @@ class Renderer : NSObject, MTKViewDelegate {
 //            testMeshes.append(mesh!)
 //
 //        }
+//        var data = simd_float4(1,1,1,1)
+//        var testBuffer = device.makeBuffer(bytes: &data, length: 16, options: [])
+//        var copy = testBuffer
+//        var new_data = simd_float4(2,2,2,2)
+//        testBuffer?.contents().copyMemory(from: &new_data, byteCount: 16)
+//        var x = copy?.contents().bindMemory(to: simd_float4.self, capacity: 1)
+//        x?.pointee = simd_float4(10,10,10,10)
+//        var result = testBuffer?.contents().bindMemory(to: simd_float4.self, capacity: 1)
+//        print(result?.pointee)
+        
 //
     }
    
     // mtkView will automatically call this function
     // whenever it wants new content to be rendered.
+   
     
     
     func draw(in view: MTKView) {
         
         fps += 1
+        print(view.drawableSize)
         
-        currentScene.renderScene()
-//        guard let commandBuffer = commandQueue.makeCommandBuffer() else {return}
-//        guard let renderPassDescriptor = view.currentRenderPassDescriptor else {return}
-//        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
-//        renderPassDescriptor.depthAttachment.clearDepth = 1
-//        renderPassDescriptor.depthAttachment.loadAction = .clear
-//
-//        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {return}
-//
-//        renderEncoder.setRenderPipelineState(testPipeline!.m_pipeLine)
-//        renderEncoder.setDepthStencilState(depthStencilState)
-//        renderEncoder.setCullMode(.back)
-//        renderEncoder.setFrontFacing(.counterClockwise)
-//       //testMesh?.draw(renderEncoder: renderEncoder,with: 3000)
-//
+//        var vector = simd_float4x4(rotationY: Float(fps)*0.1)*simd_float4(0,0,1,1);
+//        var light = simd_float3(vector.x, vector.y, vector.z)
+   //     currentScene.renderScene()
+     
+        var transform = Transforms(Scale: simd_float4x4(scale: simd_float3(4)), Translate: simd_float4x4(translate: simd_float3(-5,0,-10)), Rotation: simd_float4x4(rotationXYZ: simd_float3(Float(fps)*0.1,Float(0)*0.1,0)), Projection: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100), Camera: simd_float4x4(eye: simd_float3(0,0,0), center: simd_float3(0,0,-1), up: simd_float3(0,1,0)))
+        testMesh?.updateUniformBuffer(with: &transform, at: 1)
+
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else {return}
+        guard let renderPassDescriptor = view.currentRenderPassDescriptor else {return}
+        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
+        renderPassDescriptor.depthAttachment.clearDepth = 1
+        renderPassDescriptor.depthAttachment.loadAction = .clear
+
+        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {return}
+
+        renderEncoder.setRenderPipelineState(testPipeline!.m_pipeLine)
+        renderEncoder.setDepthStencilState(depthStencilState)
+        //renderEncoder.setCullMode(.back)
+        //renderEncoder.setFrontFacing(.counterClockwise)
+        renderEncoder.setFragmentSamplerState(sampler, index: 0)
+        //renderEncoder.setFragmentBytes(&light, length: 16, index: 10)
+       testMesh?.draw(renderEncoder: renderEncoder,with: 2)
+
 //        for mesh in testMeshes {
 //            mesh.draw(renderEncoder: renderEncoder)
 //        }
-//
-//        renderEncoder.endEncoding()
-//
-//        commandBuffer.present(view.currentDrawable!)
-//        commandBuffer.commit()
+
+        renderEncoder.endEncoding()
+
+        commandBuffer.present(view.currentDrawable!)
+        commandBuffer.commit()
        
     }
 

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		DA1EB18429B388ED00942766 /* Helper.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA1EB18329B388ED00942766 /* Helper.swift */; };
+		DA21FF3E29CB9F8B00F5C549 /* Camera.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA21FF3D29CB9F8B00F5C549 /* Camera.swift */; };
 		DA75DE8B2954AE1500251E4C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA75DE8A2954AE1500251E4C /* AppDelegate.swift */; };
 		DA75DE8D2954AE1500251E4C /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA75DE8C2954AE1500251E4C /* ViewController.swift */; };
 		DA75DE8F2954AE1500251E4C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = DA75DE8E2954AE1500251E4C /* Assets.xcassets */; };
@@ -41,6 +42,7 @@
 
 /* Begin PBXFileReference section */
 		DA1EB18329B388ED00942766 /* Helper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Helper.swift; path = ../Helper.swift; sourceTree = "<group>"; };
+		DA21FF3D29CB9F8B00F5C549 /* Camera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Camera.swift; sourceTree = "<group>"; };
 		DA75DE872954AE1500251E4C /* MetalProject.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MetalProject.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DA75DE8A2954AE1500251E4C /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		DA75DE8C2954AE1500251E4C /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -89,6 +91,7 @@
 		DA75DE7E2954AE1400251E4C = {
 			isa = PBXGroup;
 			children = (
+				DA21FF3D29CB9F8B00F5C549 /* Camera.swift */,
 				DA75DE892954AE1500251E4C /* MetalProject */,
 				DA75DE9B2954AE1500251E4C /* MetalProjectTests */,
 				DA75DEA52954AE1500251E4C /* MetalProjectUITests */,
@@ -288,6 +291,7 @@
 				DA75DEBE2955AEAF00251E4C /* Maths.swift in Sources */,
 				DA75DE8B2954AE1500251E4C /* AppDelegate.swift in Sources */,
 				DAA6AAF129BBC16700BF03E3 /* constants.swift in Sources */,
+				DA21FF3E29CB9F8B00F5C549 /* Camera.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
