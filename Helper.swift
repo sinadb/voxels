@@ -227,6 +227,7 @@ class Mesh{
         for buffer in uniformBuffersArray {
             if (buffer.index == vertexBufferIDs.uniformBuffers){
                 if let camera = MeshCamera {
+                 
                     newData.Camera = simd_float4x4(eye: camera.eye, center: camera.eye + camera.centre, up: simd_float3(0,1,0))
                 }
                 buffer.buffer.contents().copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride)
@@ -241,6 +242,7 @@ class Mesh{
 //            }
 //        }
         if let camera = MeshCamera {
+           
             newData.Camera = simd_float4x4(eye: camera.eye, center: camera.eye + camera.centre, up: simd_float3(0,1,0))
         }
         uniformBuffersArray[0].buffer.contents().advanced(by: offset * MemoryLayout<Transforms>.stride).copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride)
@@ -248,6 +250,13 @@ class Mesh{
     }
     
     func updateUniformBuffer(with newData : inout [Transforms]){
+        if let camera = MeshCamera {
+            for i in 0..<newData.count {
+               
+                newData[i].Camera = simd_float4x4(eye: camera.eye, center: camera.eye + camera.centre, up: simd_float3(0,1,0))
+            }
+        }
+       
         for buffer in uniformBuffersArray {
             if (buffer.index == vertexBufferIDs.uniformBuffers){
                 buffer.buffer.contents().copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride*newData.count)

@@ -249,9 +249,10 @@ fragment float4 simple_shader_fragment(VertexOut in [[stage_in]],
                                        [[texture(textureIDs::Normal),function_constant(has_normal_map)]],
                                        sampler textureSampler [[sampler(0)]],
                                        constant float4 &colour [[buffer(fragmentBufferIDs::colours),function_constant(no_texture)]]
+                                      // constant simd_float3& light_pos [[buffer(10)]]
                                        ){
     
-    simd_float3 light_pos = simd_float3(30,0,0);
+    simd_float3 light_pos = simd_float3(0,30,0);
     simd_float3 light_vector = normalize(light_pos - in.world_pos);
     //light_vector = simd_float3(1,0,0);
     if(has_normal_map){
@@ -261,13 +262,13 @@ fragment float4 simple_shader_fragment(VertexOut in [[stage_in]],
         simd_float3x3 TBN = simd_float3x3(normalize(tangent),bitangent,normalize(in.normal));
         float3 normal = (normalMap.sample(textureSampler, in.tex)).rgb;
         normal = (normal * 2.0 - 1.0);
-        normal.xy *= 30.0;
+        //normal.xy *= 30.0;
         normal = normalize(normal);
         //normal = normalize(simd_float3(0.3,0,1));
         normal = normalize(TBN * normal);
         float attenuation = saturate(saturate(dot(light_vector,normal)) + 0.5);
         //return float4(normal,1);
-        return float4(attenuation*colour,1);
+        return float4(attenuation*simd_float3(0.5,0.5,0.5),1);
         
     }
     if(cube){
@@ -326,6 +327,11 @@ fragment float4 cubeMap_reflection_fragment(VertexOut in [[stage_in]],
         return final_colour/20.0;
     }
     float3 reflection_vector = reflect(incident, in.normal);
-    reflection_vector.y *= -1.0;
+    
+        reflection_vector.y *= -1.0;
+    
+    
+    reflection_vector = normalize(reflection_vector);
+    //return float4(reflection_vector,1);
     return cubeMap.sample(textureSampler, reflection_vector);
 }

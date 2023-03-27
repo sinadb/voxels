@@ -124,27 +124,49 @@ class ViewController: NSViewController {
 //        }
     }
     override func mouseUp(with event: NSEvent) {
-        if let _ = mouse_x, let _ = mouse_y {
-            mouse_x = nil
-            mouse_y = nil
-        }
+        renderer.testCamera.reset_mouse()
     }
+    
+   
     override func mouseDragged(with event: NSEvent) {
-        if mouse_x == nil && mouse_y == nil {
-            mouse_x = Float(event.locationInWindow.x)
-            mouse_y = Float(event.locationInWindow.y)
-            renderer.testCamera.previous_x = mouse_x
-            renderer.testCamera.previous_y = mouse_y
+        let pos = simd_float2(Float(event.locationInWindow.x),Float(event.locationInWindow.y))
+       
+        renderer.testCamera.update_mouse(with: pos)
+    }
+    
+    func myKeyDownEvent(event: NSEvent) -> NSEvent
+    {
+        switch event.keyCode {
+        case Keycode.w:
+            renderer.testCamera.update_eye(with: simd_float3(0,1,0))
+            break
+        case Keycode.s:
+            renderer.testCamera.update_eye(with: simd_float3(0,-1,0))
+            break
+        case Keycode.a:
+            renderer.testCamera.update_eye(with: simd_float3(-1,0,0))
+            break
+        case Keycode.d:
+            renderer.testCamera.update_eye(with: simd_float3(1,0,0))
+            break
+        case Keycode.q:
+            renderer.testCamera.update_eye(with: simd_float3(0,0,1))
+            break
+        case Keycode.e:
+            renderer.testCamera.update_eye(with: simd_float3(0,0,-1))
+            break
+        case Keycode.space:
+            print(renderer.testCamera.forward)
+            break
+        default:
+            break
         }
-        else {
-            //print(event.locationInWindow.y,event.locationInWindow.x)
-            mouse_x = Float(event.locationInWindow.x)
-            mouse_y = Float(event.locationInWindow.y)
-            renderer.testCamera.update()
-        }
+        
+        return event
     }
     override func viewDidLoad() {
         super.viewDidLoad()
+        NSEvent.addLocalMonitorForEvents(matching: NSEvent.EventTypeMask.keyDown, handler: myKeyDownEvent)
         let ta = NSTrackingArea(rect: CGRect.zero, options: [.activeAlways, .inVisibleRect, .mouseMoved], owner: self, userInfo: nil)
         self.view.addTrackingArea(ta)
         

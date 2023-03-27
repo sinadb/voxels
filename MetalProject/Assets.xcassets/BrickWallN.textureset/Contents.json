@@ -6,8 +6,7 @@
   "textures" : [
     {
       "filename" : "Universal.mipmapset",
-      "idiom" : "universal",
-      "pixel-format" : "rgba-8-unorm"
+      "idiom" : "universal"
     }
   ]
 }
