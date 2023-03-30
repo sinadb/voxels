@@ -193,7 +193,7 @@ class skyBoxScene {
         samplerDescriptor.rAddressMode = .repeat
         samplerDescriptor.sAddressMode = .repeat
         samplerDescriptor.tAddressMode = .repeat
-        samplerDescriptor.normalizedCoordinates = true
+        samplerDescriptor.normalizedCoordinates = True
         sampler = device.makeSamplerState(descriptor: samplerDescriptor)!
         
         random_vectors_buffer = device.makeBuffer(bytes: create_random_points_in_sphere(for: 200), length: MemoryLayout<simd_float3>.stride*200, options: [])
@@ -306,6 +306,7 @@ class skyBoxScene {
         }
         if let camera = sceneCamera {
             reflectiveNodeMesh?.attach_camera_to_mesh(to: camera)
+            skyBoxfinalPassMesh?.attach_camera_to_mesh(to: camera)
         }
     }
         
@@ -372,28 +373,7 @@ class skyBoxScene {
         skyBoxfinalPassMesh?.updateTexture(with: texture)
     }
     
-//    func updateCamera(with camera : simd_float4x4){
-//        self.camera = camera
-//
-//        var reflectiveMeshTransform = Transforms(Scale: simd_float4x4(scale: reflectiveNodeInitialState[0]), Translate: simd_float4x4(translate: centreOfReflection), Rotation: simd_float4x4(rotationXYZ: reflectiveNodeInitialState[2]), Projection: projection, Camera: camera)
-//        reflectiveNodeMesh?.createAndAddUniformBuffer(bytes: &reflectiveMeshTransform, length: MemoryLayout<Transforms>.stride, at: vertexBufferIDs.uniformBuffers, for: device)
-//        print(eye)
-//        reflectiveNodeMesh?.createAndAddUniformBuffer(bytes: &eye, length: MemoryLayout<simd_float3>.stride, at: vertexBufferIDs.camera_origin, for: device)
-//
-//        var finalPassCamera = self.camera
-//        finalPassCamera[3] = simd_float4(0,0,0,1)
-//        var skyBoxfinalPassTransform = Transforms(Scale: simd_float4x4(scale: simd_float3(1)), Translate: simd_float4x4(translate: simd_float3(0)), Rotation: simd_float4x4(rotationXYZ: simd_float3(0)), Projection: projection, Camera: finalPassCamera)
-//
-//        skyBoxfinalPassMesh?.createAndAddUniformBuffer(bytes: &skyBoxfinalPassTransform, length: MemoryLayout<Transforms>.stride, at: vertexBufferIDs.uniformBuffers, for: device)
-//
-//
-//
-//        for (mesh,state) in zip(finalPassNodes,nodesInitialState){
-//            var new_transform = Transforms(Scale: simd_float4x4(scale: state[0]), Translate: simd_float4x4(translate: state[1]), Rotation: simd_float4x4(rotationXYZ: state[2]+simd_float3(0,Float(fps)*0.1,0)), Projection: projection, Camera: camera)
-//            mesh.updateUniformBuffer(with: &new_transform)
-//        }
-//
-//    }
+
     
     func renderScene(){
         
@@ -422,8 +402,8 @@ class skyBoxScene {
             
             let states = nodesInitialState[label]!
             let totalStetesCount = states.count
-           
-          
+
+
                             for i in 0..<totalStetesCount{
                                     let state = states[i]
                                     var new_transform = createBuffersForRenderToCube(scale: state[0], rotation: state[2] + simd_float3(0,Float(fps)*0.1,0), translate: state[1], from: cameras)
@@ -432,7 +412,7 @@ class skyBoxScene {
                                     var new_transformFinalPass = Transforms(Scale: simd_float4x4(scale: state[0]), Translate: simd_float4x4(translate: state[1]), Rotation: simd_float4x4(rotationXYZ: state[2]+simd_float3(0,Float(fps)*0.1,0)), Projection: projection, Camera: camera)
                                     finalPassNodes[label]?.updateUniformBuffer(with: &new_transformFinalPass, at: i)
                             }
-                
+//
                
                                 let count = nodeCounts[label]!
                                 mesh.draw(renderEncoder: renderEncoder, with: 6*count)
@@ -576,6 +556,10 @@ class Renderer : NSObject, MTKViewDelegate {
     var testMeshes = [Mesh]()
     var BrickWallTextureN : MTLTexture?
     var BrickWallTextureD : MTLTexture?
+    var testSpot : Mesh?
+    var alleyMesh : Mesh?
+    var cameraLists = [Camera]()
+    var testAlley : Mesh?
     
     init?(mtkView: MTKView){
       
@@ -588,7 +572,7 @@ class Renderer : NSObject, MTKViewDelegate {
         
         commandQueue = device.makeCommandQueue()!
         
-        mtkView.colorPixelFormat = .bgra8Unorm
+        mtkView.colorPixelFormat = .bgra8Unorm_srgb
         mtkView.depthStencilPixelFormat = .depth32Float
         
         let cubeTextureOptions: [MTKTextureLoader.Option : Any] = [
@@ -702,6 +686,7 @@ class Renderer : NSObject, MTKViewDelegate {
         let planeMDLMesh = MDLMesh(planeWithExtent: simd_float3(1,1,1), segments: simd_uint2(1,1), geometryType: .triangles, allocator: allocator)
         let cubeMDLMesh = MDLMesh(boxWithExtent: simd_float3(1,1,1), segments: simd_uint3(1,1,1), inwardNormals: false, geometryType: .triangles, allocator: allocator)
         let circleMDLMesh = MDLMesh(sphereWithExtent: simd_float3(1,1,1), segments: simd_uint2(20,20), inwardNormals: False, geometryType: .triangles, allocator: allocator)
+        let coneMDLMesh = MDLMesh(coneWithExtent: simd_float3(1,1,1), segments: simd_uint2(100,100), inwardNormals: False, cap: False, geometryType: .triangles, allocator: allocator)
         let mdlMeshVD = MDLVertexDescriptor()
         mdlMeshVD.attributes[0] = MDLVertexAttribute(name: MDLVertexAttributePosition, format: .float4, offset: 0, bufferIndex: 0)
         
@@ -718,6 +703,7 @@ class Renderer : NSObject, MTKViewDelegate {
         cubeMDLMesh.vertexDescriptor = mdlMeshVD
         circleMDLMesh.vertexDescriptor = mdlMeshVD
         planeMDLMesh.vertexDescriptor = mdlMeshVD
+        coneMDLMesh.vertexDescriptor = mdlMeshVD
         
         currentScene.addSkyBoxNode(with: Texture(texture: skyboxTexture!, index: textureIDs.cubeMap), mesh: cubeMDLMesh)
         let c_r = Float.random(in: 0...1)
@@ -725,7 +711,7 @@ class Renderer : NSObject, MTKViewDelegate {
                     let c_b = Float.random(in: 0...1)
 //        currentScene.addNodes(with : "Circle", mesh: circleMDLMesh, scale: simd_float3(1), translate: simd_float3(7,0,0), rotation: simd_float3(0), colour: simd_float4(c_r,c_g,c_b,1))
         
-        for i in 0...1000{
+        for i in 0...10{
             let x_r = Float.random(in: -20...20)
             let y_r = Float.random(in: -20...20)
             let z_r = Float.random(in: -20...20)
@@ -735,7 +721,7 @@ class Renderer : NSObject, MTKViewDelegate {
             let c_b = Float.random(in: 0...1)
             let scale = Float.random(in: 0.1...1)
 
-            if(i < 501){
+            if(i < 6){
                 currentScene.addNodes(with : "Cube", mesh: cubeMDLMesh, scale: simd_float3(scale), translate: simd_float3(x_r,y_r,z_r), rotation: simd_float3(0), colour: simd_float4(c_r,c_g,c_b,1))
             }
             else {
@@ -747,12 +733,12 @@ class Renderer : NSObject, MTKViewDelegate {
 //        currentScene.addNodes(with : "Cube", mesh: cubeMDLMesh, scale: simd_float3(1), translate: simd_float3(10,0,0), rotation: simd_float3(0), colour: simd_float4(1,0,0,1))
 //
 //        currentScene.addNodes(with : "Cube", mesh: cubeMDLMesh, scale: simd_float3(1), translate: simd_float3(-10,0,0), rotation: simd_float3(0), colour: simd_float4(0,1,1,1))
-        currentScene.addReflectiveNode(mesh: circleMDLMesh, scale: simd_float3(5), rotation: simd_float3(0))
+        currentScene.addReflectiveNode(mesh: circleMDLMesh, scale: simd_float3(8), rotation: simd_float3(0))
         
         currentScene.finalise_nodes_buffers()
         
 
-    
+       
        
         let reflectionTexture = Texture(texture: cubeTexture!, index: textureIDs.cubeMap)
         activeSkyBox = Texture(texture: skyboxTexture!, index: textureIDs.cubeMap)
@@ -780,17 +766,17 @@ class Renderer : NSObject, MTKViewDelegate {
 //        drawer.renderMeshWithCubeMapReflection = pipeLine(device, "cubeMap_reflection_vertex", "cubeMap_reflection_fragment", vertexDescriptor, false)?.m_pipeLine
 //
         let testFCs = functionConstant()
-        testFCs.setValue(type: .bool, value: &False, at: 0)
-        testFCs.setValue(type: .bool, value: &False, at: 1)
-        testFCs.setValue(type: .bool, value: &False, at: 2)
-        testFCs.setValue(type: .bool, value: &False, at: 3)
-        testFCs.setValue(type: .bool, value: &True, at: 5)
+        testFCs.setValue(type: .bool, value: &False, at: FunctionConstantValues.cube)
+        testFCs.setValue(type: .bool, value: &True, at: FunctionConstantValues.flat)
+        testFCs.setValue(type: .bool, value: &False, at: FunctionConstantValues.constant_colour)
+        testFCs.setValue(type: .bool, value: &False, at: FunctionConstantValues.is_skyBox)
+        testFCs.setValue(type: .bool, value: &True, at: FunctionConstantValues.has_normalMap)
         
         testPipeline = pipeLine(device, "simple_shader_vertex", "simple_shader_fragment", vertexDescriptor, testFCs.functionConstant)
         
         
         testMesh = Mesh(device: device, Mesh: cubeMDLMesh)
-        let transform = Transforms(Scale: simd_float4x4(scale: simd_float3(8)), Translate: simd_float4x4(translate: simd_float3(0,0,-20)), Rotation: simd_float4x4(rotationXYZ: simd_float3(0,0,0)), Projection: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100), Camera: simd_float4x4(eye: simd_float3(0,0,0), center: simd_float3(0,0,-1), up: simd_float3(0,1,0)))
+        let transform = Transforms(Scale: simd_float4x4(scale: simd_float3(3)), Translate: simd_float4x4(translate: simd_float3(0,0,-20)), Rotation: simd_float4x4(rotationXYZ: simd_float3(45,0,0)), Projection: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100), Camera: simd_float4x4(eye: simd_float3(0,0,0), center: simd_float3(0,0,-1), up: simd_float3(0,1,0)))
      
         testMesh?.createInstance(with: transform, and: simd_float4(1,0,0,1), add: rotateFirst)
        
@@ -798,58 +784,81 @@ class Renderer : NSObject, MTKViewDelegate {
         testMesh?.attach_camera_to_mesh(to: testCamera)
         testMesh?.add_textures(textures: Texture(texture: BrickWallTextureN!, index: textureIDs.Normal))
         testMesh?.add_textures(textures: Texture(texture: BrickWallTextureD!, index: textureIDs.flat))
-//        for _ in 0...3000 {
-//            let x_r = Float.random(in: -20...20)
-//            let y_r = Float.random(in: -20...20)
-//            let z_r = Float.random(in: -20 ... -15)
-//
-//            let rot_x = Float.random(in: 0...360)
-//            let rot_y = Float.random(in: 0...360)
-//            let rot_z = Float.random(in: 0...360)
-//
-//            let Transform = Transforms(Scale: simd_float4x4(scale: simd_float3(1)), Translate: simd_float4x4(translate: simd_float3(x_r,y_r,z_r)), Rotation: simd_float4x4(rotationXYZ: simd_float3(rot_x,rot_y,rot_z)), Projection: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100), Camera: simd_float4x4(eye: simd_float3(0,0,0), center: simd_float3(0,0,-1), up: simd_float3(0,1,0)))
-//            let c_r = Float.random(in: 0...1)
-//            let c_g = Float.random(in: 0...1)
-//            let c_b = Float.random(in: 0...1)
-//
-//            testMesh?.createInstance(with: Transform, and: simd_float4(c_r,c_g,c_b,1),add: rotateFirst)
-//
-//
-//
-//
-//        }
-//        testMesh?.init_instance_buffers()
-//
-//        testMesh?.createAndAddUniformBuffer(bytes: &rotateFirst, length: MemoryLayout<Int>.stride, at: vertexBufferIDs.order_of_rot_tran, for: device)
-//
-//        // test the same render without instancing
-//        for _ in 0...3000 {
-//            let x_r = Float.random(in: -20...20)
-//            let y_r = Float.random(in: -20...20)
-//            let z_r = Float.random(in: -20 ... -15)
-//            var Transform = Transforms(Scale: simd_float4x4(scale: simd_float3(1)), Translate: simd_float4x4(translate: simd_float3(x_r,y_r,z_r)), Rotation: simd_float4x4(rotationXYZ: simd_float3(0)), Projection: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100), Camera: simd_float4x4(eye: simd_float3(0,0,0), center: simd_float3(0,0,-1), up: simd_float3(0,1,0)))
-//            let c_r = Float.random(in: 0...1)
-//            let c_g = Float.random(in: 0...1)
-//            let c_b = Float.random(in: 0...1)
-//
-//            let mesh = Mesh(device: device, Mesh: circleMDLMesh)
-//            mesh?.createAndAddUniformBuffer(bytes: &Transform, length: MemoryLayout<Transforms>.stride, at: vertexBufferIDs.uniformBuffers, for: device)
-//            var colour = simd_float4(c_r,c_g,c_b,1)
-//            mesh?.createAndAddUniformBuffer(bytes: &colour, length: 16, at: vertexBufferIDs.colour, for: device)
-//            mesh?.createAndAddUniformBuffer(bytes: &rotateFirst, length: MemoryLayout<Int>.stride, at: vertexBufferIDs.order_of_rot_tran, for: device)
-//
-//            testMeshes.append(mesh!)
-//
-//        }
-//        var data = simd_float4(1,1,1,1)
-//        var testBuffer = device.makeBuffer(bytes: &data, length: 16, options: [])
-//        var copy = testBuffer
-//        var new_data = simd_float4(2,2,2,2)
-//        testBuffer?.contents().copyMemory(from: &new_data, byteCount: 16)
-//        var x = copy?.contents().bindMemory(to: simd_float4.self, capacity: 1)
-//        x?.pointee = simd_float4(10,10,10,10)
-//        var result = testBuffer?.contents().bindMemory(to: simd_float4.self, capacity: 1)
-//        print(result?.pointee)
+        cameraLists.append(testCamera)
+
+        
+        let alleyURL = Bundle.main.url(forResource: "alley", withExtension: "obj")
+        let alleyAsset = MDLAsset(url: alleyURL, vertexDescriptor: mdlMeshVD, bufferAllocator: allocator)
+        
+        guard let alleyTempMesh = alleyAsset.childObjects(of: MDLMesh.self) as? [MDLMesh] else {
+            print("alley not loaded")
+            return nil
+        }
+        print("alley loaded")
+        alleyMesh = Mesh(device: device, Mesh: (alleyTempMesh.first)!, with: "Alley")
+        alleyMesh?.createInstance(with: transform, and: simd_float4(1,0,0,1), add: rotateFirst)
+        alleyMesh?.init_instance_buffers()
+        
+        print("We have this many meshes \(alleyTempMesh.count)")
+        guard let firstMesh = alleyTempMesh.first else {
+            return
+        }
+        
+        let testMeshes = try! MTKMesh(mesh: firstMesh, device: device)
+        print("We have this many submeshes \(testMeshes.submeshes.count)")
+        let firstAlleySubMesh = firstMesh.submeshes?[0] as? MDLSubmesh
+        
+        let alleyMTL = firstAlleySubMesh?.material
+        
+        if let baseColour = alleyMTL?.property(with: MDLMaterialSemantic.baseColor){
+            if baseColour.type == .string, let textureURL = baseColour.urlValue {
+                print(textureURL)
+                let options: [MTKTextureLoader.Option : Any] = [
+                    .textureUsage : MTLTextureUsage.shaderRead.rawValue,
+                    .textureStorageMode : MTLStorageMode.private.rawValue,
+                    .origin : MTKTextureLoader.Origin.bottomLeft.rawValue
+                ]
+                do {
+                    let texture = try textureLoader.newTexture(URL: textureURL, options: options)
+                    alleyMesh?.add_textures(textures: Texture(texture: texture, index: textureIDs.flat))
+                }
+                catch {
+                    print(error)
+                    print("Alley texture failed to load")
+                }
+            }
+            else {
+                print("Alley texture not loaded")
+            }
+        }
+        
+        let assetURL = Bundle.main.url(
+            forResource: "spot_triangulated",
+            withExtension: "obj")
+        let mdlAsset = MDLAsset(url: assetURL,
+                                vertexDescriptor: mdlMeshVD,
+                                bufferAllocator: allocator)
+        mdlAsset.loadTextures()
+        guard let spotMesh = mdlAsset.childObjects(of: MDLMesh.self) as? [MDLMesh] else{
+            print("spot not loaded")
+            return nil
+        }
+        print("spot loaded")
+        print("the length of the spot mesh is \(spotMesh.count)")
+        var spotCamera = Camera(for: mtkView, eye: simd_float3(0), centre: simd_float3(0,0,-1))
+        cameraLists.append(spotCamera)
+        testSpot = Mesh(device: device, address: assetURL!, vertexDescriptor: mdlMeshVD)
+        testSpot?.createInstance(with: transform, and: simd_float4(1,0,0,1), add: rotateFirst)
+        testSpot?.init_instance_buffers()
+        testSpot?.attach_camera_to_mesh(to: spotCamera)
+       
+        alleyMesh?.attach_camera_to_mesh(to: spotCamera)
+        testAlley = Mesh(device: device, address: alleyURL!, vertexDescriptor: mdlMeshVD, with: "Alley Test Mesh")
+        testAlley?.createInstance(with: transform, and: simd_float4(0,0,0,1), add: rotateFirst)
+        
+        testAlley?.init_instance_buffers()
+        testAlley?.attach_camera_to_mesh(to: spotCamera)
+        
         
 //
     }
@@ -866,10 +875,10 @@ class Renderer : NSObject, MTKViewDelegate {
         
 //        var vector = simd_float4x4(rotationY: Float(fps)*0.1)*simd_float4(0,0,1,1);
 //        var light = simd_float3(vector.x, vector.y, vector.z)
-       currentScene.renderScene()
+      currentScene.renderScene()
      
-//        var transform = Transforms(Scale: simd_float4x4(scale: simd_float3(8)), Translate: simd_float4x4(translate: simd_float3(0,0,-20)), Rotation: simd_float4x4(rotationXYZ: simd_float3(Float(fps)*0.1,Float(0)*0.1,0)), Projection: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100), Camera: simd_float4x4(eye: simd_float3(0,0,0), center: simd_float3(0,0,-1), up: simd_float3(0,1,0)))
-//        testMesh?.updateUniformBuffer(with: &transform)
+//        var transform = Transforms(Scale: simd_float4x4(scale: simd_float3(8)), Translate: simd_float4x4(translate: simd_float3(0,0,-20)), Rotation: simd_float4x4(rotationXYZ: simd_float3(Float(fps)*0.1,Float(0)*0.1,0)), Projection: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100), Camera: cameraLists[0].get_camera_matrix())
+//        testSpot?.updateUniformBuffer(with: &transform)
 
 //        guard let commandBuffer = commandQueue.makeCommandBuffer() else {return}
 //        guard let renderPassDescriptor = view.currentRenderPassDescriptor else {return}
@@ -881,16 +890,14 @@ class Renderer : NSObject, MTKViewDelegate {
 //
 //        renderEncoder.setRenderPipelineState(testPipeline!.m_pipeLine)
 //        renderEncoder.setDepthStencilState(depthStencilState)
-//        //renderEncoder.setCullMode(.back)
-//        //renderEncoder.setFrontFacing(.counterClockwise)
+//        renderEncoder.setCullMode(.back)
+//        renderEncoder.setFrontFacing(.counterClockwise)
 //        renderEncoder.setFragmentSamplerState(sampler, index: 0)
 //        //renderEncoder.setFragmentBytes(&light, length: 16, index: 10)
 //        renderEncoder.setFragmentBytes(&testCamera.eye, length: MemoryLayout<simd_float3>.stride, index: 10)
-//       testMesh?.draw(renderEncoder: renderEncoder,with: 2)
-//
-//        for mesh in testMeshes {
-//            mesh.draw(renderEncoder: renderEncoder)
-//        }
+//        var colour = simd_float4(1,0,0,1);
+//        //renderEncoder.setFragmentBytes(&colour, length: 16, index: fragmentBufferIDs.colours)
+//        testAlley?.draw(renderEncoder: renderEncoder, with: 1)
 //
 //        renderEncoder.endEncoding()
 //

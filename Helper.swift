@@ -121,6 +121,7 @@ class Mesh{
     var indexData : [UInt16]?
     var vertexBuffer : MTLBuffer?
     var indexBuffer : MTLBuffer?
+    var indexBufferArray = [MTLBuffer]()
     var Mesh : MTKMesh?
     var instanceTransformData = [Transforms]()
     var instanceColourData = [simd_float4]()
@@ -131,9 +132,121 @@ class Mesh{
     var instanceBuffer : MTLBuffer?
     var no_instances = 0
     
+    
+    init(device : MTLDevice, address : URL, vertexDescriptor : MDLVertexDescriptor, with label : String = "NoLable"){
+        self.device = device
+       
+        let allocator = MTKMeshBufferAllocator(device: device)
+        let Asset = MDLAsset(url: address, vertexDescriptor: vertexDescriptor, bufferAllocator: allocator)
+        Asset.loadTextures()
+        guard let MeshArray = Asset.childObjects(of: MDLMesh.self) as? [MDLMesh] else {
+            print("\(label) failed to load")
+            return
+        }
+        let MDLMesh = MeshArray.first!
+        
+        MDLMesh.addTangentBasis(
+          forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate,
+          normalAttributeNamed: MDLVertexAttributeNormal,
+          tangentAttributeNamed: MDLVertexAttributeTangent)
+        MDLMesh.vertexDescriptor = vertexDescriptor
+        
+        do {
+            try self.Mesh = MTKMesh(mesh: MDLMesh, device: device)
+            print("\(label) Mesh created")
+        }
+        catch{
+            print(error)
+            print("Failed to create Mesh \(label)")
+            return
+        }
+        
+        let textureLoader = MTKTextureLoader(device: device)
+        vertexBuffer = Mesh?.vertexBuffers[0].buffer
+        let submeshcount = MDLMesh.submeshes!.count
+        for i in 0..<(submeshcount ){
+            let indexBuffer = Mesh?.submeshes[i].indexBuffer.buffer
+            indexBufferArray.append(indexBuffer!)
+            let currentSubMesh = MDLMesh.submeshes?[i] as? MDLSubmesh
+            let material = currentSubMesh?.material
+            if let baseColour = material?.property(with: MDLMaterialSemantic.baseColor){
+                if baseColour.type == .texture, let textureURL = baseColour.urlValue {
+                    let options: [MTKTextureLoader.Option : Any] = [
+                        .textureUsage : MTLTextureUsage.shaderRead.rawValue,
+                        .textureStorageMode : MTLStorageMode.private.rawValue,
+                        .origin : MTKTextureLoader.Origin.bottomLeft.rawValue
+                    ]
+                    do {
+                        let texture = try textureLoader.newTexture(URL: textureURL, options: options)
+                        self.add_textures(textures: Texture(texture: texture, index: textureIDs.flat))
+                    }
+                    catch {
+                        print(error)
+                        print("Alley texture failed to load")
+                    }
+                }
+                else {
+                    print("Alley texture not loaded")
+                }
+            }
+            
+            if let baseColour = material?.property(with: MDLMaterialSemantic.tangentSpaceNormal){
+                if baseColour.type == .texture, let textureURL = baseColour.urlValue {
+                    let options: [MTKTextureLoader.Option : Any] = [
+                        .textureUsage : MTLTextureUsage.shaderRead.rawValue,
+                        .textureStorageMode : MTLStorageMode.private.rawValue,
+                        .origin : MTKTextureLoader.Origin.bottomLeft.rawValue,
+                        .SRGB : false
+                    ]
+                    
+                    do {
+                        let texture = try textureLoader.newTexture(URL: textureURL, options: options)
+                        self.add_textures(textures: Texture(texture: texture, index: textureIDs.Normal))
+                    }
+                    catch {
+                        print(error)
+                        print("Alley texture failed to load")
+                    }
+                }
+                else {
+                    print("Alley Normal texture not loaded")
+                }
+            }
+        }
+       
+//        let index0 = indexBufferArray[1].contents().bindMemory(to: UInt32.self, capacity: 30)
+//        for i in 0...29 {
+//            print((index0 + i).pointee)
+//        }
+        print(texturesArray.count)
+    }
+    
+    
+    init(device : MTLDevice, vertices : [Float], indices : [uint16]){
+        self.device = device
+        vertexData = vertices
+        indexData = indices
+        initaliseBuffers()
+        
+    }
+    init?(device : MTLDevice, Mesh : MDLMesh, with label : String = "NoLabel"){
+        self.device = device
+        let allocator = MTKMeshBufferAllocator(device: device)
+        do {
+            try self.Mesh = MTKMesh(mesh: Mesh, device: device)
+            print("\(label) Mesh created")
+        }
+        catch{
+            print(error)
+            print("Failed to create Mesh \(label)")
+            return nil
+        }
+        initaliseBuffers()
+    }
+    
     func initaliseBuffers(){
         if Mesh != nil{
-            print("Test Mesh ")
+            print("Test Mesh")
             vertexBuffer = Mesh?.vertexBuffers[0].buffer
             indexBuffer = Mesh?.submeshes[0].indexBuffer.buffer
         }
@@ -168,32 +281,13 @@ class Mesh{
     
     func add_textures(textures : Texture...){
         for t in textures {
+            print(t.index)
             texturesArray.append(t)
         }
     }
     
     
-    init(device : MTLDevice, vertices : [Float], indices : [uint16]){
-        self.device = device
-        vertexData = vertices
-        indexData = indices
-        initaliseBuffers()
-        
-    }
-    init?(device : MTLDevice, Mesh : MDLMesh){
-        self.device = device
-        let allocator = MTKMeshBufferAllocator(device: device)
-        do {
-            try self.Mesh = MTKMesh(mesh: Mesh, device: device)
-            print("Test Mesh created")
-        }
-        catch{
-            print(error)
-            print("Failed to create Mesh")
-            return nil
-        }
-        initaliseBuffers()
-    }
+    
     
     func createInstance(with transforms : Transforms..., and colour : simd_float4..., add transformMode : Int...){
         for t in transforms {
@@ -218,10 +312,7 @@ class Mesh{
         uniformBuffersArray.insert(transformBuffer, at: 0)
     }
     
-//    func addInsanceData(with offsets : [Float]){
-//        instanceData = offsets
-//        instanceBuffer = device.makeBuffer(bytes: instanceData!, length: MemoryLayout<Float>.stride*offsets.count, options: [])
-//    }
+
     
     func updateUniformBuffer(with newData : inout Transforms){
         for buffer in uniformBuffersArray {
@@ -266,11 +357,7 @@ class Mesh{
     }
     
     func updateUniformBuffer(with newData : inout [Transforms], at offset : Int){
-//        for buffer in uniformBuffersArray {
-//            if (buffer.index == vertexBufferIDs.uniformBuffers){
-//                buffer.buffer.contents().advanced(by: offset * MemoryLayout<Transforms>.stride*6).copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride*6)
-//            }
-//        }
+
         uniformBuffersArray[0].buffer.contents().advanced(by: offset * MemoryLayout<Transforms>.stride*6).copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride*6)
     }
     
@@ -283,6 +370,7 @@ class Mesh{
     }
     
     func draw(renderEncoder : MTLRenderCommandEncoder){
+       
         for buffer in uniformBuffersArray {
             if let function = buffer.functionType {
                 if(function == .fragment){
@@ -291,6 +379,17 @@ class Mesh{
                 }
             }
             renderEncoder.setVertexBuffer(buffer.buffer, offset: 0, index: buffer.index)
+        }
+        if (!(indexBufferArray.isEmpty)){
+            for i in 0..<indexBufferArray.count{
+                renderEncoder.setFragmentTexture(texturesArray[i].texture, index: texturesArray[i].index)
+                let submesh = Mesh!.submeshes[i]
+                renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+                renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: indexBuffer!, indexBufferOffset: submesh.indexBuffer.offset)
+            }
+           
+            return
+           
         }
         for texture in texturesArray {
             renderEncoder.setFragmentTexture(texture.texture, index: texture.index)
@@ -317,6 +416,22 @@ class Mesh{
             }
             renderEncoder.setVertexBuffer(buffer.buffer, offset: 0, index: buffer.index)
         }
+        
+        if (!(indexBufferArray.isEmpty)){
+            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+            for i in 0..<indexBufferArray.count{
+                renderEncoder.setFragmentTexture(texturesArray[i].texture, index: texturesArray[i].index)
+                renderEncoder.setFragmentTexture(texturesArray[i+1].texture, index: texturesArray[i+1].index)
+                let submesh = Mesh!.submeshes[i]
+              
+                renderEncoder.setVertexBuffer(instanceBuffer, offset: 0, index: 2)
+                renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: indexBufferArray[i], indexBufferOffset: submesh.indexBuffer.offset)
+            }
+           
+            return
+           
+        }
+        
         for texture in texturesArray {
             renderEncoder.setFragmentTexture(texture.texture, index: texture.index)
         }
@@ -407,7 +522,7 @@ class pipeLine {
 
         library = device.makeDefaultLibrary()!
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
-        pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
+        pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm_srgb
         pipelineDescriptor.depthAttachmentPixelFormat = .depth32Float
        
             pipelineDescriptor.vertexFunction = try! library.makeFunction(name: vertexFunctionName, constantValues: functionConstant)

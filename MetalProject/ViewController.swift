@@ -124,39 +124,56 @@ class ViewController: NSViewController {
 //        }
     }
     override func mouseUp(with event: NSEvent) {
-        renderer.testCamera.reset_mouse()
+        for camera in renderer.cameraLists{
+            camera.reset_mouse()
+
+        }
     }
     
    
     override func mouseDragged(with event: NSEvent) {
         let pos = simd_float2(Float(event.locationInWindow.x),Float(event.locationInWindow.y))
-       
-        renderer.testCamera.update_mouse(with: pos)
+        for camera in renderer.cameraLists{
+            camera.update_mouse(with: pos)
+
+        }
     }
     
     func myKeyDownEvent(event: NSEvent) -> NSEvent
     {
         switch event.keyCode {
         case Keycode.w:
-            renderer.testCamera.update_eye(with: simd_float3(0,1,0))
+            for camera in renderer.cameraLists{
+                camera.update_eye(with: simd_float3(0,1,0))
+            }
+            
             break
         case Keycode.s:
-            renderer.testCamera.update_eye(with: simd_float3(0,-1,0))
+            for camera in renderer.cameraLists{
+                camera.update_eye(with: simd_float3(0,-1,0))
+            }
             break
         case Keycode.a:
-            renderer.testCamera.update_eye(with: simd_float3(-1,0,0))
+            for camera in renderer.cameraLists{
+                camera.update_eye(with: simd_float3(-1,0,0))
+            }
             break
         case Keycode.d:
-            renderer.testCamera.update_eye(with: simd_float3(1,0,0))
+            for camera in renderer.cameraLists{
+                camera.update_eye(with: simd_float3(1,0,0))
+            }
             break
         case Keycode.q:
-            renderer.testCamera.update_eye(with: simd_float3(0,0,1))
+            for camera in renderer.cameraLists{
+                camera.update_eye(with: simd_float3(0,0,1))
+            }
             break
         case Keycode.e:
-            renderer.testCamera.update_eye(with: simd_float3(0,0,-1))
+            for camera in renderer.cameraLists{
+                camera.update_eye(with: simd_float3(0,0,-1))
+            }
             break
         case Keycode.space:
-            print(renderer.testCamera.forward)
             break
         default:
             break

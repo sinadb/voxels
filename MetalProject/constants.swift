@@ -34,6 +34,17 @@ struct fragmentBufferIDs {
 }
 
 
+
+struct FunctionConstantValues {
+    static let cube = 0
+    static let flat = 1
+    static let constant_colour = 2
+    static let is_skyBox = 3
+    static let fuzzy = 4
+    static let has_normalMap = 5
+}
+
+
 struct Keycode {
     
     // Layout-independent Keys

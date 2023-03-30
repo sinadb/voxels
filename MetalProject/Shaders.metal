@@ -233,6 +233,8 @@ vertex VertexOut simple_shader_vertex(VertexIn in [[stage_in]],
 
     }
     if(is_sky_box){
+        simd_float4x4 camera = simd_float4x4(current_transform.Camera[0],current_transform.Camera[1],current_transform.Camera[2],simd_float4(0,0,0,1));
+        out.pos = current_transform.Projection*camera*current_transform.Translate*current_transform.Rotation*current_transform.Scale*in.pos;
         out.pos.z = out.pos.w;
         
     }
@@ -249,14 +251,13 @@ fragment float4 simple_shader_fragment(VertexOut in [[stage_in]],
                                        [[texture(textureIDs::Normal),function_constant(has_normal_map)]],
                                        sampler textureSampler [[sampler(0)]],
                                        constant float4 &colour [[buffer(fragmentBufferIDs::colours),function_constant(no_texture)]]
-                                      // constant simd_float3& light_pos [[buffer(10)]]
                                        ){
     
-    simd_float3 light_pos = simd_float3(0,30,0);
+    simd_float3 light_pos = simd_float3(30,0,0);
     simd_float3 light_vector = normalize(light_pos - in.world_pos);
     //light_vector = simd_float3(1,0,0);
     if(has_normal_map){
-        simd_float3 colour = flatMap.sample(textureSampler, in.tex).rgb;
+        simd_float4 colour = flatMap.sample(textureSampler, in.tex);
         simd_float3 tangent = normalize(in.tangent - dot(in.tangent, in.normal) * in.normal);
         simd_float3 bitangent = normalize(cross(in.normal, tangent));
         simd_float3x3 TBN = simd_float3x3(normalize(tangent),bitangent,normalize(in.normal));
@@ -266,9 +267,9 @@ fragment float4 simple_shader_fragment(VertexOut in [[stage_in]],
         normal = normalize(normal);
         //normal = normalize(simd_float3(0.3,0,1));
         normal = normalize(TBN * normal);
-        float attenuation = saturate(saturate(dot(light_vector,normal)) + 0.5);
-        //return float4(normal,1);
-        return float4(attenuation*simd_float3(0.5,0.5,0.5),1);
+        float attenuation = saturate(dot(light_vector,normal));
+        return colour;
+        return attenuation*colour;
         
     }
     if(cube){
