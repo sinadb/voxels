@@ -253,24 +253,21 @@ fragment float4 simple_shader_fragment(VertexOut in [[stage_in]],
                                        texture2d<float> normalMap
                                        [[texture(textureIDs::Normal),function_constant(has_normal_map)]],
                                        sampler textureSampler [[sampler(0)]],
-                                       constant float4 &colour [[buffer(fragmentBufferIDs::colours),function_constant(no_texture)]],
                                        constant simd_float4& eye [[buffer(10)]]
                                        ){
-    
-    //return float4(1,0,0,1);
-    //simd_float3 eye = simd_float3(50,0,0);
-    //return colour;
-    return float4(eye.xyz,1);
-    simd_float3 light_pos = simd_float3(50,50,-20);
-    simd_float3 L = normalize(light_pos - in.world_pos);
-    simd_float3 V = normalize(eye.xyz - in.world_pos);
-    float specularExponent = 150;
-    simd_float3 H = normalize(L+V);
-    simd_float3 light_vector = normalize(light_pos - in.world_pos);
-    simd_float3 directional_light = simd_float3(1,1,0);
-   
-    //light_vector = simd_float3(1,0,0);
   
+    if(has_normal_map){
+        return float4(eye.xyz,1);
+        simd_float3 light_pos = simd_float3(50,50,-20);
+        simd_float3 L = normalize(light_pos - in.world_pos);
+        simd_float3 V = normalize(eye.xyz - in.world_pos);
+        float specularExponent = 150;
+        simd_float3 H = normalize(L+V);
+        simd_float3 light_vector = normalize(light_pos - in.world_pos);
+        simd_float3 directional_light = simd_float3(1,1,0);
+        
+        //light_vector = simd_float3(1,0,0);
+        
         simd_float4 outcolour = flatMap.sample(textureSampler, in.tex);
         simd_float3 tangent = normalize(in.tangent - dot(in.tangent, in.normal) * in.normal);
         simd_float3 bitangent = normalize(cross(in.normal, tangent));
@@ -284,24 +281,23 @@ fragment float4 simple_shader_fragment(VertexOut in [[stage_in]],
         float attenuation = saturate(dot(light_vector,normal));
         float specularFactor = powr(saturate(dot(normal, H)), 150.0) * 50;
         attenuation = specularFactor;
-    attenuation += saturate(dot(normal,L));
-    return float4(specularFactor,0,0,1);
-    return attenuation*outcolour;
+        attenuation += saturate(dot(normal,L));
+        return float4(specularFactor,0,0,1);
+        return attenuation*outcolour;
+    }
         
     
-//    else if(cube){
-//        return cubeMap.sample(textureSampler, in.tex_3);
-//    }
-//    else if(flat && !has_normal_map){
-//        return float4(1,0,0,1);
-//        return flatMap.sample(textureSampler, in.tex);
-//    }
-//    else if(no_texture){
-//        return colour;
-//    }
-//    else {
-//        return in.colour;
-//    }
+    else if(cube){
+        return cubeMap.sample(textureSampler, in.tex_3);
+    }
+    else if(flat){
+        return float4(1,0,0,1);
+        return flatMap.sample(textureSampler, in.tex);
+    }
+    else{
+        return in.colour;
+    }
+    
     
 }
 
