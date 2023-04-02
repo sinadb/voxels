@@ -11,7 +11,7 @@ import MetalKit
 import AppKit
 
 class Camera {
-    var transformBuffer = [UniformBuffer]()
+    var Mesh : Mesh?
     var eye : simd_float3
     var centre : simd_float3
     var previous_x : Float?
@@ -79,11 +79,17 @@ class Camera {
         previous_y = mouse_y
         
         var camera = simd_float4x4(eye: eye, center: centre + eye, up: simd_float3(0,1,0))
-        for buffer in transformBuffer {
-            for i in 0..<(buffer.count ?? 1) {
-                var ptr = buffer.buffer.contents().advanced(by: i*MemoryLayout<Transforms>.stride).bindMemory(to: Transforms.self, capacity: 1)
-                ptr.pointee.Camera = camera
-            }
+        var ptr = Mesh!.BufferArray[0].buffer.contents().bindMemory(to: InstanceConstants.self, capacity: Mesh!.no_instances)
+        
+        let viewMatrix = simd_float4x4(eye: eye, center: eye + centre, up: simd_float3(0,1,0))
+       
+        for i in 0..<Mesh!.no_instances{
+            let modelMatrix = (ptr + i).pointee.modelMatrix
+            let normalMatrix = create_normalMatrix(modelViewMatrix: viewMatrix * modelMatrix)
+            
+            (ptr + i).pointee.normalMatrix = normalMatrix
+            (ptr + i).pointee.viewMatrix = viewMatrix
+            //print(current_ptr.modelMatrix)
         }
 //        forward = normalize(-centre)
 //        across = normalize(cross(up, forward))

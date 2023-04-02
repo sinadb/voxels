@@ -31,7 +31,7 @@ struct Transforms {
 
 struct InstanceConstants {
     simd_float4x4 modelMatrix;
-    simd_float4x4 modelViewMatrix;
+    simd_float4x4 viewMatrix;
     simd_float4x4 normalMatrix;
 };
 

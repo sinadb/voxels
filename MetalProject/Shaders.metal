@@ -219,7 +219,8 @@ vertex VertexOut simple_shader_vertex(VertexIn in [[stage_in]],
     out.colour = colour_out[index];
     simd_float4x4 modelMatrix = Transforms[index].modelMatrix;
     simd_float4x4 normalMatrix = Transforms[index].normalMatrix;
-    simd_float4x4 modelViewMatrix = Transforms[index].modelViewMatrix;
+    simd_float4x4 viewMatrix = Transforms[index].viewMatrix;
+    simd_float4x4 modelViewMatrix = viewMatrix * modelMatrix;
     simd_float4x4 projectionMatrix = SceneConstants.projectionMatrix;
     // world_pos is in eye space so if need world_pos, ensure camera matrix is identity
     out.world_pos = (modelMatrix*in.pos).xyz;
@@ -289,7 +290,16 @@ fragment float4 simple_shader_fragment(VertexOut in [[stage_in]],
         return flatMap.sample(textureSampler, in.tex);
     }
     else{
-        return in.colour;
+        simd_float3 V = normalize(-(in.eye_pos).xyz);
+        simd_float3 L = normalize(simd_float3(1,1,1));
+        simd_float3 H = normalize(V+V);
+        float ambientFactor = 0.01;
+        float specularExponent = 250;
+        float diffuseFactor = saturate(dot(L, in.world_normal));
+        float specularFactor = powr(saturate(dot(in.world_normal, H)), specularExponent);
+        float finalFactor = diffuseFactor + specularFactor + ambientFactor;
+        //return float4(in.eye_pos,1);
+        return float4(in.colour.xyz*finalFactor,1);
     }
     
     

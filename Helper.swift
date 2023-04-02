@@ -168,7 +168,7 @@ class Mesh{
     
   
    
-    var no_instances = 1
+    var no_instances = 0
     
     
     
@@ -498,6 +498,20 @@ class Mesh{
 //        }
 //    }
     
+    func rotateMesh(with newModelMatrix : [simd_float4x4]){
+        var ptr = BufferArray[0].buffer.contents().bindMemory(to: InstanceConstants.self, capacity: no_instances)
+        let viewMatrix = simd_float4x4(eye: MeshCamera!.eye, center: MeshCamera!.eye + MeshCamera!.centre, up: simd_float3(0,1,0))
+       
+        
+        for i in 0..<no_instances{
+            let normalMatrix = create_normalMatrix(modelViewMatrix: viewMatrix * newModelMatrix[i])
+            
+            (ptr + i).pointee.normalMatrix = normalMatrix
+            (ptr + i).pointee.modelMatrix = newModelMatrix[i]
+            //print(current_ptr.modelMatrix)
+        }
+    }
+    
     func add_textures(textures : Texture...){
         for t in textures {
             print(t.index)
@@ -508,14 +522,24 @@ class Mesh{
     
     
     
-    func createInstance(with transforms : InstanceConstants..., and colour : simd_float4...){
-        for t in transforms {
-            instanceConstantData.append(t)
-            no_instances += 1
+    func createInstance(with modelMatrix : simd_float4x4 , and colour : simd_float4, attachTo camera : Camera){
+      
+        if(MeshCamera == nil) {
+            MeshCamera = camera
+            MeshCamera?.Mesh = self
         }
-        for c in colour{
-            instanceColourData.append(c)
-        }
+        no_instances += 1
+        
+        let viewMatrix = simd_float4x4(eye: camera.eye, center: camera.eye + camera.centre, up: simd_float3(0,1,0))
+        let normalMatrix = create_normalMatrix(modelViewMatrix: viewMatrix * modelMatrix)
+        
+        let instanceData = InstanceConstants(modelMatrix: modelMatrix, viewMatrix: viewMatrix, normalMatrix: normalMatrix)
+        
+        instanceConstantData.append(instanceData)
+            
+      
+        instanceColourData.append(colour)
+        
        
     }
     func init_instance_buffers(){
@@ -531,7 +555,7 @@ class Mesh{
         
         let colourBuffer = UniformBuffer(buffer: instanceColourBuffer!, index: vertexBufferIDs.colour)
         
-        BufferArray.append(instanceBuffer)
+        BufferArray.insert(instanceBuffer, at: 0)
         BufferArray.append(colourBuffer)
       
     }

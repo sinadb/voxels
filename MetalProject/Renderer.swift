@@ -520,7 +520,7 @@ class Renderer : NSObject, MTKViewDelegate {
          1,-1,0,1, 0,0,1, 1,0, 1,0,0,1, 01,0,1
     ]
     var wallIB : [uint32] = [
-        0,1,2,
+        100,1,2,
         0,2,3
     ]
     
@@ -528,6 +528,8 @@ class Renderer : NSObject, MTKViewDelegate {
     
     var performanceTestMesh : Mesh?
     var projectionMatrix : simd_float4x4
+    var testCamera : Camera
+    var initialState = [[simd_float3]]()
     
     
     init?(mtkView: MTKView){
@@ -586,7 +588,7 @@ class Renderer : NSObject, MTKViewDelegate {
         let allocator = MTKMeshBufferAllocator(device: device)
         let planeMDLMesh = MDLMesh(planeWithExtent: simd_float3(1,1,1), segments: simd_uint2(1,1), geometryType: .triangles, allocator: allocator)
         let cubeMDLMesh = MDLMesh(boxWithExtent: simd_float3(1,1,1), segments: simd_uint3(1,1,1), inwardNormals: false, geometryType: .triangles, allocator: allocator)
-        let circleMDLMesh = MDLMesh(sphereWithExtent: simd_float3(1,1,1), segments: simd_uint2(200,200), inwardNormals: False, geometryType: .triangles, allocator: allocator)
+        let circleMDLMesh = MDLMesh(sphereWithExtent: simd_float3(1,1,1), segments: simd_uint2(100,100), inwardNormals: False, geometryType: .triangles, allocator: allocator)
         let coneMDLMesh = MDLMesh(coneWithExtent: simd_float3(1,1,1), segments: simd_uint2(100,100), inwardNormals: False, cap: False, geometryType: .triangles, allocator: allocator)
        
     
@@ -637,9 +639,11 @@ class Renderer : NSObject, MTKViewDelegate {
         projectionMatrix = simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2.0, near: 0.1, far: 100)
         
      
+        testCamera = Camera(for: mtkView, eye: simd_float3(0), centre: simd_float3(0,0,-1))
+        cameraLists.append(testCamera)
        
        
-        for _ in 0...1000{
+        for _ in 0..<1000{
             let x_r = Float.random(in: -40...(40))
             let y_r = Float.random(in: -40...(40))
             let z_r = Float.random(in: -40...(-20))
@@ -649,15 +653,14 @@ class Renderer : NSObject, MTKViewDelegate {
             let c_b = Float.random(in: 0...1)
             let scale = Float.random(in: 0.1...5)
             
+            let state = [simd_float3(x_r,y_r,z_r),simd_float3(scale),]
+            initialState.append(state)
+            
             let modelMatrix = create_modelMatrix(translation: simd_float3(x_r,y_r,z_r), rotation: simd_float3(0), scale: simd_float3(scale))
             
-            let modelViewMatrix = create_modelViewMatrix(modelMatrix: modelMatrix, viewMatrix: simd_float4x4(eye: simd_float3(0), center: simd_float3(0,0,-1), up: simd_float3(0,1,0)))
             
-            let normalMatrix = create_normalMatrix(modelViewMatrix: modelViewMatrix)
             
-            var instanceData = InstanceConstants(modelMatrix: modelMatrix, modelViewMatrix: modelViewMatrix, normalMatrix: normalMatrix)
-            
-            performanceTestMesh?.createInstance(with: instanceData, and: simd_float4(c_r,c_g,c_b,1))
+            performanceTestMesh?.createInstance(with: modelMatrix, and: simd_float4(c_r,c_g,c_b,1), attachTo: testCamera)
             
           
         }
@@ -665,13 +668,31 @@ class Renderer : NSObject, MTKViewDelegate {
         
         performanceTestMesh?.init_instance_buffers()
         
-     
+//        let buffer = device.makeBuffer(bytes: &wallIB, length: MemoryLayout<Int32>.stride*6)
+//        var ptr = buffer?.contents().bindMemory(to: Int32.self, capacity: 6)
+//
+//        
+//        
+//        for i in 0..<6{
+//            
+//            print((ptr! + i).pointee)
+//            (ptr! + i).pointee = 200
+//        }
+//        
+//        var ptr1 = buffer?.contents().bindMemory(to: Int32.self, capacity: 6)
+//        
+//        for i in 0..<6{
+//            
+//            print((ptr1! + i).pointee)
+//        }
         
 
     }
    
     // mtkView will automatically call this function
     // whenever it wants new content to be rendered.
+    
+    
    
     
     
@@ -682,10 +703,21 @@ class Renderer : NSObject, MTKViewDelegate {
        // currentScene.renderScene()
 
       
+        
+        var newInstanceData = [simd_float4x4]()
+        for i in 0..<1000 {
+            let translate = initialState[i][0]
+            let scale = initialState[i][1]
+            let modelMatrix = create_modelMatrix(translation: translate, rotation: simd_float3(0,Float(fps)*0.1,0), scale: scale)
+            newInstanceData.append(modelMatrix)
+        }
+        performanceTestMesh?.rotateMesh(with: newInstanceData)
+        
         guard let commandBuffer = commandQueue.makeCommandBuffer() else {return}
 
 
-
+//        var ptr = performanceTestMesh?.BufferArray[0].buffer.contents().bindMemory(to: InstanceConstants.self, capacity: 1)
+//        ptr?.pointee.modelMatrix = create_modelMatrix(translation: initialState[0][0] + simd_float3(0,Float(fps)*0.01,0), rotation: simd_float3(0,Float(fps)*0.1,0), scale: initialState[0][1])
 
         guard let renderPassDescriptor = view.currentRenderPassDescriptor else {return}
         renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
