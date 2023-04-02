@@ -5,7 +5,7 @@
   },
   "levels" : [
     {
-      "filename" : "brick_baseColor.png",
+      "filename" : "cobblestone_baseColor.png",
       "mipmap-level" : "base"
     }
   ]

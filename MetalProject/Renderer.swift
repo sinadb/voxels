@@ -188,8 +188,8 @@ class skyBoxScene {
         
         // create a samplerState
         let samplerDescriptor = MTLSamplerDescriptor()
-        samplerDescriptor.magFilter = .nearest
-        samplerDescriptor.minFilter = .nearest
+        samplerDescriptor.magFilter = .linear
+        samplerDescriptor.minFilter = .linear
         samplerDescriptor.rAddressMode = .repeat
         samplerDescriptor.sAddressMode = .repeat
         samplerDescriptor.tAddressMode = .repeat
@@ -232,6 +232,7 @@ class skyBoxScene {
     func addNodes(with label : String, mesh : MDLMesh, scale : simd_float3, translate : simd_float3, rotation : simd_float3, colour : simd_float4){
         // firest pass nodes are being rendered from the centre of reflection
         
+      
         var initialState = [scale,translate,rotation]
         // add initial state to for the correct node
         
@@ -403,7 +404,7 @@ class skyBoxScene {
             let states = nodesInitialState[label]!
             let totalStetesCount = states.count
 
-
+                            
                             for i in 0..<totalStetesCount{
                                     let state = states[i]
                                     var new_transform = createBuffersForRenderToCube(scale: state[0], rotation: state[2] + simd_float3(0,Float(fps)*0.1,0), translate: state[1], from: cameras)
@@ -556,10 +557,37 @@ class Renderer : NSObject, MTKViewDelegate {
     var testMeshes = [Mesh]()
     var BrickWallTextureN : MTLTexture?
     var BrickWallTextureD : MTLTexture?
-    var testSpot : Mesh?
+    var BrickWallTextureH : MTLTexture?
+    var Spot : Mesh?
     var alleyMesh : Mesh?
     var cameraLists = [Camera]()
     var testAlley : Mesh?
+    
+    var tesselationPipelineState : MTLRenderPipelineState
+    var tesselateWall : Mesh?
+    var FlowerImage : MTLTexture?
+    
+    
+   
+    var wallVB : [Float] = [
+        -1,-1,0,1, 0,0,1, 0,0, 1,0,0,1, 0,1,0,1,
+         -1,1,0,1, 0,0,1, 0,1, 1,0,0,1, 0,1,0,1,
+         1,1,0,1, 0,0,1, 1,1, 1,0,0,1, 0,1,0,1,
+         1,-1,0,1, 0,0,1, 1,0, 1,0,0,1, 01,0,1
+    ]
+    var wallIB : [uint32] = [
+        0,1,2,
+        0,2,3
+    ]
+    
+    var wallBuffer : MTLBuffer?
+    var wallIndex : MTLBuffer?
+    var computePipeLineState : MTLComputePipelineState?
+    var tesselationFactorBuffer : MTLBuffer?
+    var tesselationLevelBuffer : MTLBuffer?
+    var spotCamera : Camera?
+    var wallCamera : Camera?
+    
     
     init?(mtkView: MTKView){
       
@@ -578,12 +606,14 @@ class Renderer : NSObject, MTKViewDelegate {
         let cubeTextureOptions: [MTKTextureLoader.Option : Any] = [
           .textureUsage : MTLTextureUsage.shaderRead.rawValue,
           .textureStorageMode : MTLStorageMode.private.rawValue,
-          .cubeLayout : MTKTextureLoader.CubeLayout.vertical
+          .cubeLayout : MTKTextureLoader.CubeLayout.vertical,
+          
         ]
         let flatTextureLoaderOptions : [MTKTextureLoader.Option : Any] = [
             .textureUsage : MTLTextureUsage.shaderRead.rawValue,
             .textureStorageMode : MTLStorageMode.private.rawValue,
-            .SRGB : False
+            .origin : MTKTextureLoader.Origin.bottomLeft.rawValue,
+           
                 
         ]
         
@@ -601,10 +631,19 @@ class Renderer : NSObject, MTKViewDelegate {
         
         
         do {
-            try BrickWallTextureN = textureLoader.newTexture(name: "BrickWallN", scaleFactor: 1.0, bundle: nil, options: flatTextureLoaderOptions)
-            try BrickWallTextureD = textureLoader.newTexture(name: "BrickWallD", scaleFactor: 1.0, bundle: nil)
-            try
+           
+            try BrickWallTextureD = textureLoader.newTexture(name: "BrickWallD", scaleFactor: 1.0, bundle: nil, options: flatTextureLoaderOptions)
+            try BrickWallTextureH = textureLoader.newTexture(name: "BrickWallH", scaleFactor: 1.0, bundle: nil)
+            try FlowerImage = textureLoader.newTexture(name: "Flower", scaleFactor: 1.0, bundle: nil, options: flatTextureLoaderOptions)
             print("Brick wall texture loaded")
+            let flatTextureLoaderOptions : [MTKTextureLoader.Option : Any] = [
+                .textureUsage : MTLTextureUsage.shaderRead.rawValue,
+                .textureStorageMode : MTLStorageMode.private.rawValue,
+                .origin : MTKTextureLoader.Origin.bottomLeft.rawValue,
+                .SRGB : False
+                    
+            ]
+            try BrickWallTextureN = textureLoader.newTexture(name: "BrickWallN", scaleFactor: 1.0, bundle: nil, options: flatTextureLoaderOptions)
         }
         catch{
             print("Failed to load brickwall texture")
@@ -654,13 +693,7 @@ class Renderer : NSObject, MTKViewDelegate {
         let vertexDescriptor = createVertexDescriptor(attributes: posAttrib,normalAttrib,texAttrib,tangentAttrib,bitangentAttrib)
         
         renderToCubePipeline  = pipeLine(device, "render_to_cube_vertex", "render_to_cube_fragment", vertexDescriptor, true)
-//        vertexDescriptor.attributes[3].offset = 0
-//        vertexDescriptor.attributes[3].format = .float3
-//        vertexDescriptor.attributes[3].bufferIndex = 2
-//        vertexDescriptor.layouts[2].stride = 12
-//        vertexDescriptor.layouts[2].stepFunction = .perInstance
-//        vertexDescriptor.layouts[2].stepRate = 1
-//
+
         
         // render a simple cube with colour pipeline
         let simplePipelineFC = functionConstant()
@@ -671,39 +704,18 @@ class Renderer : NSObject, MTKViewDelegate {
         simplePipelineFC.setValue(type: .bool, value: &False, at: 5)
         simplePipeline = pipeLine(device, "simple_shader_vertex", "simple_shader_fragment", vertexDescriptor, simplePipelineFC.functionConstant)
         
-        
-        // this pipeline renders cubemap reflections
-//        renderCubeMapReflection = pipeLine(device, "cubeMap_reflection_vertex", "cubeMap_reflection_fragment", vertexDescriptor, false)
-        
-        
-       // this one renders a skybox
-      
-        
-        
-        
+
         
         let allocator = MTKMeshBufferAllocator(device: device)
         let planeMDLMesh = MDLMesh(planeWithExtent: simd_float3(1,1,1), segments: simd_uint2(1,1), geometryType: .triangles, allocator: allocator)
         let cubeMDLMesh = MDLMesh(boxWithExtent: simd_float3(1,1,1), segments: simd_uint3(1,1,1), inwardNormals: false, geometryType: .triangles, allocator: allocator)
         let circleMDLMesh = MDLMesh(sphereWithExtent: simd_float3(1,1,1), segments: simd_uint2(20,20), inwardNormals: False, geometryType: .triangles, allocator: allocator)
         let coneMDLMesh = MDLMesh(coneWithExtent: simd_float3(1,1,1), segments: simd_uint2(100,100), inwardNormals: False, cap: False, geometryType: .triangles, allocator: allocator)
-        let mdlMeshVD = MDLVertexDescriptor()
-        mdlMeshVD.attributes[0] = MDLVertexAttribute(name: MDLVertexAttributePosition, format: .float4, offset: 0, bufferIndex: 0)
-        
-        mdlMeshVD.attributes[1] = MDLVertexAttribute(name: MDLVertexAttributeNormal, format: .float3, offset: 16, bufferIndex: 0)
-        mdlMeshVD.attributes[2] = MDLVertexAttribute(name: MDLVertexAttributeTextureCoordinate, format: .float2, offset: 28, bufferIndex: 0)
-        
-        mdlMeshVD.attributes[3] = MDLVertexAttribute(name: MDLVertexAttributeTangent, format: .float4, offset: 36, bufferIndex: 0)
-        
-        mdlMeshVD.attributes[4] = MDLVertexAttribute(name: MDLVertexAttributeBitangent, format: .float4, offset: 52, bufferIndex: 0)
-        mdlMeshVD.layouts[0] = MDLVertexBufferLayout(stride: 68)
-        circleMDLMesh.addTangentBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, tangentAttributeNamed: MDLVertexAttributeTangent, bitangentAttributeNamed: MDLVertexAttributeBitangent)
-        cubeMDLMesh.addTangentBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, tangentAttributeNamed: MDLVertexAttributeTangent, bitangentAttributeNamed: MDLVertexAttributeBitangent)
-        planeMDLMesh.addTangentBasis(forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate, tangentAttributeNamed: MDLVertexAttributeTangent, bitangentAttributeNamed: MDLVertexAttributeBitangent)
-        cubeMDLMesh.vertexDescriptor = mdlMeshVD
-        circleMDLMesh.vertexDescriptor = mdlMeshVD
-        planeMDLMesh.vertexDescriptor = mdlMeshVD
-        coneMDLMesh.vertexDescriptor = mdlMeshVD
+       
+//        cubeMDLMesh.vertexDescriptor = mdlMeshVD
+//        circleMDLMesh.vertexDescriptor = mdlMeshVD
+//        planeMDLMesh.vertexDescriptor = mdlMeshVD
+//        coneMDLMesh.vertexDescriptor = mdlMeshVD
         
         currentScene.addSkyBoxNode(with: Texture(texture: skyboxTexture!, index: textureIDs.cubeMap), mesh: cubeMDLMesh)
         let c_r = Float.random(in: 0...1)
@@ -711,7 +723,7 @@ class Renderer : NSObject, MTKViewDelegate {
                     let c_b = Float.random(in: 0...1)
 //        currentScene.addNodes(with : "Circle", mesh: circleMDLMesh, scale: simd_float3(1), translate: simd_float3(7,0,0), rotation: simd_float3(0), colour: simd_float4(c_r,c_g,c_b,1))
         
-        for i in 0...10{
+        for i in 0...6000{
             let x_r = Float.random(in: -20...20)
             let y_r = Float.random(in: -20...20)
             let z_r = Float.random(in: -20...20)
@@ -721,7 +733,7 @@ class Renderer : NSObject, MTKViewDelegate {
             let c_b = Float.random(in: 0...1)
             let scale = Float.random(in: 0.1...1)
 
-            if(i < 6){
+            if(i < 3001){
                 currentScene.addNodes(with : "Cube", mesh: cubeMDLMesh, scale: simd_float3(scale), translate: simd_float3(x_r,y_r,z_r), rotation: simd_float3(0), colour: simd_float4(c_r,c_g,c_b,1))
             }
             else {
@@ -733,7 +745,7 @@ class Renderer : NSObject, MTKViewDelegate {
 //        currentScene.addNodes(with : "Cube", mesh: cubeMDLMesh, scale: simd_float3(1), translate: simd_float3(10,0,0), rotation: simd_float3(0), colour: simd_float4(1,0,0,1))
 //
 //        currentScene.addNodes(with : "Cube", mesh: cubeMDLMesh, scale: simd_float3(1), translate: simd_float3(-10,0,0), rotation: simd_float3(0), colour: simd_float4(0,1,1,1))
-        currentScene.addReflectiveNode(mesh: circleMDLMesh, scale: simd_float3(8), rotation: simd_float3(0))
+        currentScene.addReflectiveNode(mesh: circleMDLMesh, scale: simd_float3(5), rotation: simd_float3(0))
         
         currentScene.finalise_nodes_buffers()
         
@@ -763,103 +775,112 @@ class Renderer : NSObject, MTKViewDelegate {
         drawer.renderMeshWithColour = simplePipeline?.m_pipeLine
         drawer.depthStencilState = depthStencilState
         drawer.sampler = sampler
-//        drawer.renderMeshWithCubeMapReflection = pipeLine(device, "cubeMap_reflection_vertex", "cubeMap_reflection_fragment", vertexDescriptor, false)?.m_pipeLine
-//
+
         let testFCs = functionConstant()
         testFCs.setValue(type: .bool, value: &False, at: FunctionConstantValues.cube)
-        testFCs.setValue(type: .bool, value: &True, at: FunctionConstantValues.flat)
-        testFCs.setValue(type: .bool, value: &False, at: FunctionConstantValues.constant_colour)
+        testFCs.setValue(type: .bool, value: &False, at: FunctionConstantValues.flat)
+        testFCs.setValue(type: .bool, value: &True, at: FunctionConstantValues.constant_colour)
         testFCs.setValue(type: .bool, value: &False, at: FunctionConstantValues.is_skyBox)
-        testFCs.setValue(type: .bool, value: &True, at: FunctionConstantValues.has_normalMap)
-        
+        testFCs.setValue(type: .bool, value: &False, at: FunctionConstantValues.has_normalMap)
+        testFCs.setValue(type: .bool, value: &False, at: FunctionConstantValues.has_displacementMap)
         testPipeline = pipeLine(device, "simple_shader_vertex", "simple_shader_fragment", vertexDescriptor, testFCs.functionConstant)
         
         
         testMesh = Mesh(device: device, Mesh: cubeMDLMesh)
-        let transform = Transforms(Scale: simd_float4x4(scale: simd_float3(3)), Translate: simd_float4x4(translate: simd_float3(0,0,-20)), Rotation: simd_float4x4(rotationXYZ: simd_float3(45,0,0)), Projection: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100), Camera: simd_float4x4(eye: simd_float3(0,0,0), center: simd_float3(0,0,-1), up: simd_float3(0,1,0)))
+        var transform = Transforms(Scale: simd_float4x4(scale: simd_float3(1)), Translate: simd_float4x4(translate: simd_float3(0,0,-10)), Rotation: simd_float4x4(rotationXYZ: simd_float3(45,-45,0)), Projection: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100), Camera: simd_float4x4(eye: simd_float3(0,0,0), center: simd_float3(0,0,-1), up: simd_float3(0,1,0)))
      
-        testMesh?.createInstance(with: transform, and: simd_float4(1,0,0,1), add: rotateFirst)
-       
-        testMesh?.init_instance_buffers()
-        testMesh?.attach_camera_to_mesh(to: testCamera)
-        testMesh?.add_textures(textures: Texture(texture: BrickWallTextureN!, index: textureIDs.Normal))
-        testMesh?.add_textures(textures: Texture(texture: BrickWallTextureD!, index: textureIDs.flat))
-        cameraLists.append(testCamera)
-
-        
-        let alleyURL = Bundle.main.url(forResource: "alley", withExtension: "obj")
-        let alleyAsset = MDLAsset(url: alleyURL, vertexDescriptor: mdlMeshVD, bufferAllocator: allocator)
-        
-        guard let alleyTempMesh = alleyAsset.childObjects(of: MDLMesh.self) as? [MDLMesh] else {
-            print("alley not loaded")
-            return nil
-        }
-        print("alley loaded")
-        alleyMesh = Mesh(device: device, Mesh: (alleyTempMesh.first)!, with: "Alley")
-        alleyMesh?.createInstance(with: transform, and: simd_float4(1,0,0,1), add: rotateFirst)
-        alleyMesh?.init_instance_buffers()
-        
-        print("We have this many meshes \(alleyTempMesh.count)")
-        guard let firstMesh = alleyTempMesh.first else {
-            return
-        }
-        
-        let testMeshes = try! MTKMesh(mesh: firstMesh, device: device)
-        print("We have this many submeshes \(testMeshes.submeshes.count)")
-        let firstAlleySubMesh = firstMesh.submeshes?[0] as? MDLSubmesh
-        
-        let alleyMTL = firstAlleySubMesh?.material
-        
-        if let baseColour = alleyMTL?.property(with: MDLMaterialSemantic.baseColor){
-            if baseColour.type == .string, let textureURL = baseColour.urlValue {
-                print(textureURL)
-                let options: [MTKTextureLoader.Option : Any] = [
-                    .textureUsage : MTLTextureUsage.shaderRead.rawValue,
-                    .textureStorageMode : MTLStorageMode.private.rawValue,
-                    .origin : MTKTextureLoader.Origin.bottomLeft.rawValue
-                ]
-                do {
-                    let texture = try textureLoader.newTexture(URL: textureURL, options: options)
-                    alleyMesh?.add_textures(textures: Texture(texture: texture, index: textureIDs.flat))
-                }
-                catch {
-                    print(error)
-                    print("Alley texture failed to load")
-                }
-            }
-            else {
-                print("Alley texture not loaded")
-            }
-        }
-        
-        let assetURL = Bundle.main.url(
-            forResource: "spot_triangulated",
-            withExtension: "obj")
-        let mdlAsset = MDLAsset(url: assetURL,
-                                vertexDescriptor: mdlMeshVD,
-                                bufferAllocator: allocator)
-        mdlAsset.loadTextures()
-        guard let spotMesh = mdlAsset.childObjects(of: MDLMesh.self) as? [MDLMesh] else{
-            print("spot not loaded")
-            return nil
-        }
-        print("spot loaded")
-        print("the length of the spot mesh is \(spotMesh.count)")
-        var spotCamera = Camera(for: mtkView, eye: simd_float3(0), centre: simd_float3(0,0,-1))
-        cameraLists.append(spotCamera)
-        testSpot = Mesh(device: device, address: assetURL!, vertexDescriptor: mdlMeshVD)
-        testSpot?.createInstance(with: transform, and: simd_float4(1,0,0,1), add: rotateFirst)
-        testSpot?.init_instance_buffers()
-        testSpot?.attach_camera_to_mesh(to: spotCamera)
-       
-        alleyMesh?.attach_camera_to_mesh(to: spotCamera)
-        testAlley = Mesh(device: device, address: alleyURL!, vertexDescriptor: mdlMeshVD, with: "Alley Test Mesh")
-        testAlley?.createInstance(with: transform, and: simd_float4(0,0,0,1), add: rotateFirst)
-        
-        testAlley?.init_instance_buffers()
-        testAlley?.attach_camera_to_mesh(to: spotCamera)
-        
-        
+//        testMesh?.createInstance(with: transform, and: simd_float4(1,0,0,1), add: rotateFirst)
+//
+//        testMesh?.init_instance_buffers()
+//        testMesh?.attach_camera_to_mesh(to: testCamera)
+//        testMesh?.add_textures(textures: Texture(texture: BrickWallTextureN!, index: textureIDs.Normal))
+//        testMesh?.add_textures(textures: Texture(texture: BrickWallTextureD!, index: textureIDs.flat))
+//        cameraLists.append(testCamera)
+//
+//
+//        let alleyURL = Bundle.main.url(forResource: "alley", withExtension: "obj")
+//        let spotURL = Bundle.main.url(forResource: "spot_triangulated", withExtension: "obj")
+//        spotCamera = Camera(for: mtkView, eye: simd_float3(0,0,0), centre: simd_float3(0,0,-1))
+//        cameraLists.append(spotCamera!)
+//
+//
+//        alleyMesh?.attach_camera_to_mesh(to: spotCamera!)
+//        testAlley = Mesh(device: device, address: alleyURL!, with: "Alley Test Mesh")
+//        testAlley?.createInstance(with: transform, and: simd_float4(0,0,0,1), add: rotateFirst)
+//
+//        testAlley?.init_instance_buffers()
+//        testAlley?.attach_camera_to_mesh(to: spotCamera!)
+//
+//        Spot = Mesh(device: device, address: alleyURL!, with: "Spot Mesh")
+//        Spot?.createAndAddUniformBuffer(bytes: &transform, length: MemoryLayout<Transforms>.stride, at: vertexBufferIDs.uniformBuffers, for: device)
+//        Spot?.createAndAddUniformBuffer(bytes: &rotateFirst, length: MemoryLayout<Int>.stride, at: vertexBufferIDs.order_of_rot_tran, for: device)
+//        Spot?.createAndAddUniformBuffer(bytes: &Red, length: 16, at: vertexBufferIDs.colour, for: device)
+//        Spot?.attach_camera_to_mesh(to: spotCamera!)
+//
+//        vertexDescriptor.layouts[0].stepRate = 1
+//        vertexDescriptor.layouts[0].stepFunction = .perPatchControlPoint
+//        let library = device.makeDefaultLibrary()!
+//
+//        let renderPipelineDescriptor = MTLRenderPipelineDescriptor()
+//
+//               renderPipelineDescriptor.vertexDescriptor = vertexDescriptor
+//
+//               renderPipelineDescriptor.tessellationFactorFormat = .half
+//               renderPipelineDescriptor.tessellationPartitionMode = .integer
+//               renderPipelineDescriptor.tessellationFactorStepFunction = .constant
+//               renderPipelineDescriptor.tessellationOutputWindingOrder = .counterClockwise
+//               renderPipelineDescriptor.tessellationControlPointIndexType = .uint32
+//        renderPipelineDescriptor.maxTessellationFactor = 64
+//
+//               renderPipelineDescriptor.colorAttachments[0].pixelFormat = mtkView.colorPixelFormat
+//               renderPipelineDescriptor.depthAttachmentPixelFormat = mtkView.depthStencilPixelFormat
+//
+//        renderPipelineDescriptor.vertexFunction = try! library.makeFunction(name: "post_tesselation_tri",constantValues: testFCs.functionConstant)
+//        renderPipelineDescriptor.fragmentFunction = try! library.makeFunction(name: "simple_shader_fragment",constantValues: testFCs.functionConstant)
+//
+//               do {
+//                   tesselationPipelineState = try device.makeRenderPipelineState(descriptor: renderPipelineDescriptor)
+//               } catch {
+//                   fatalError("Unable to create render pipeline state: \(error)")
+//               }
+//        print("Tesselation pipeline created successfully")
+//
+//
+//        var tesselatedWallCamera = Camera(for: mtkView, eye: simd_float3(0,5,0), centre: simd_float3(0,0,-20))
+//        var tesselatedWallTransform = Transforms(Scale: simd_float4x4(scale: simd_float3(1)), Translate: simd_float4x4(translate: simd_float3(0,10,-10)), Rotation: simd_float4x4(rotationXYZ: simd_float3(90,0,0)), Projection: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2.0, near: 0.1, far: 100), Camera: tesselatedWallCamera.get_camera_matrix())
+//        tesselateWall = Mesh(device: device, address: alleyURL!, with: "Tesselated Mesh Created", with: 64)
+//        tesselateWall?.createAndAddUniformBuffer(bytes: &tesselatedWallTransform, length: MemoryLayout<Transforms>.stride, at: vertexBufferIDs.uniformBuffers, for: device)
+//        tesselateWall?.createAndAddUniformBuffer(bytes: &rotateFirst, length: MemoryLayout<Int>.stride, at: vertexBufferIDs.order_of_rot_tran, for: device)
+//        tesselateWall?.createAndAddUniformBuffer(bytes: &Red, length: 16, at: vertexBufferIDs.colour, for: device)
+//        tesselateWall?.attach_camera_to_mesh(to: tesselatedWallCamera)
+//        cameraLists.append(tesselatedWallCamera)
+//
+//
+//
+//        wallBuffer = device.makeBuffer(bytes: &wallVB, length: MemoryLayout<Float>.stride*17*4, options: [])
+//        wallIndex = device.makeBuffer(bytes: &wallIB, length: MemoryLayout<uint32>.stride*6,options: [])
+//        wallCamera = Camera(for: mtkView, eye: simd_float3(0,8,0), centre: simd_float3(0,0,-20))
+//        cameraLists.append(wallCamera!)
+//
+//        let computeFunction = library.makeFunction(name: "tess_factor_tri")
+//        if(computeFunction == nil){
+//            print("Kernel function does not exist")
+//        }
+//        else {
+//            print("Kernel function found and loaded")
+//        }
+//         do {
+//             computePipeLineState = try device.makeComputePipelineState(function: computeFunction!) }
+//        catch{
+//            return nil
+//        }
+//
+//        tesselationFactorBuffer = device.makeBuffer(length: MemoryLayout<MTLTriangleTessellationFactorsHalf>.stride,options: .storageModePrivate)
+//        var level : Int = 64
+//        tesselationLevelBuffer = device.makeBuffer(bytes: &level, length: MemoryLayout<Int>.stride, options: [])
+//
+//
+//
 //
     }
    
@@ -871,38 +892,66 @@ class Renderer : NSObject, MTKViewDelegate {
     func draw(in view: MTKView) {
         
         fps += 1
-        //print(view.drawableSize)
-        
-//        var vector = simd_float4x4(rotationY: Float(fps)*0.1)*simd_float4(0,0,1,1);
-//        var light = simd_float3(vector.x, vector.y, vector.z)
-      currentScene.renderScene()
-     
-//        var transform = Transforms(Scale: simd_float4x4(scale: simd_float3(8)), Translate: simd_float4x4(translate: simd_float3(0,0,-20)), Rotation: simd_float4x4(rotationXYZ: simd_float3(Float(fps)*0.1,Float(0)*0.1,0)), Projection: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100), Camera: cameraLists[0].get_camera_matrix())
-//        testSpot?.updateUniformBuffer(with: &transform)
+  
+       // currentScene.renderScene()
 
-//        guard let commandBuffer = commandQueue.makeCommandBuffer() else {return}
-//        guard let renderPassDescriptor = view.currentRenderPassDescriptor else {return}
-//        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
-//        renderPassDescriptor.depthAttachment.clearDepth = 1
-//        renderPassDescriptor.depthAttachment.loadAction = .clear
-//
-//        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {return}
-//
-//        renderEncoder.setRenderPipelineState(testPipeline!.m_pipeLine)
-//        renderEncoder.setDepthStencilState(depthStencilState)
-//        renderEncoder.setCullMode(.back)
-//        renderEncoder.setFrontFacing(.counterClockwise)
-//        renderEncoder.setFragmentSamplerState(sampler, index: 0)
-//        //renderEncoder.setFragmentBytes(&light, length: 16, index: 10)
-//        renderEncoder.setFragmentBytes(&testCamera.eye, length: MemoryLayout<simd_float3>.stride, index: 10)
-//        var colour = simd_float4(1,0,0,1);
-//        //renderEncoder.setFragmentBytes(&colour, length: 16, index: fragmentBufferIDs.colours)
-//        testAlley?.draw(renderEncoder: renderEncoder, with: 1)
-//
-//        renderEncoder.endEncoding()
-//
-//        commandBuffer.present(view.currentDrawable!)
-//        commandBuffer.commit()
+        var transform = Transforms(Scale: simd_float4x4(scale: simd_float3(8)), Translate: simd_float4x4(translate: simd_float3(0,0,-20)), Rotation: simd_float4x4(rotationXYZ: simd_float3(-90,Float(0)*0.1,0)), Projection: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100), Camera: wallCamera!.get_camera_matrix())
+
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else {return}
+
+
+        guard let computecommandBuffer = commandQueue.makeCommandBuffer() else {return}
+        guard let computeEndoer = computecommandBuffer.makeComputeCommandEncoder() else {return}
+        computeEndoer.setComputePipelineState(computePipeLineState!)
+        computeEndoer.setBuffer(tesselationFactorBuffer, offset: 0, index: 0)
+        computeEndoer.setBuffer(tesselationLevelBuffer, offset: 0, index: 1)
+        computeEndoer.dispatchThreadgroups(MTLSize(width: 1,height: 1,depth: 1), threadsPerThreadgroup: MTLSize(width: 1,height: 1,depth: 1))
+        computeEndoer.endEncoding()
+        computecommandBuffer.commit()
+        computecommandBuffer.waitUntilCompleted()
+
+
+        guard let renderPassDescriptor = view.currentRenderPassDescriptor else {return}
+        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
+        renderPassDescriptor.depthAttachment.clearDepth = 1
+        renderPassDescriptor.depthAttachment.loadAction = .clear
+
+        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {return}
+
+
+        renderEncoder.setRenderPipelineState(tesselationPipelineState)
+        renderEncoder.setDepthStencilState(depthStencilState)
+
+        renderEncoder.setFragmentSamplerState(sampler, index: 0)
+        //renderEncoder.setTriangleFillMode(.lines)
+        var colour = simd_float4(1,1,0,1);
+        renderEncoder.setFragmentBytes(&colour, length: 16, index: fragmentBufferIDs.colours)
+        renderEncoder.setVertexBytes(&colour, length: 16, index: vertexBufferIDs.colour)
+        var camera = simd_float4(wallCamera!.eye,1)
+        print(camera)
+        let buffer = device.makeBuffer(bytes: &camera, length: 16)
+        renderEncoder.setFragmentBytes(&camera, length: MemoryLayout<simd_float4>.stride, index: 10)
+        //renderEncoder.setFragmentBuffer(buffer, offset: 0, index: 10)
+        renderEncoder.setVertexSamplerState(sampler, index: 0)
+        renderEncoder.setVertexBuffer(wallBuffer, offset: 0, index: vertexBufferIDs.vertexBuffers)
+        renderEncoder.setVertexBytes(&transform, length: MemoryLayout<Transforms>.stride, index: vertexBufferIDs.uniformBuffers)
+        renderEncoder.setVertexBytes(&rotateFirst, length: MemoryLayout<Int>.stride, index: vertexBufferIDs.order_of_rot_tran)
+        renderEncoder.setTessellationFactorBuffer(tesselationFactorBuffer, offset: 0, instanceStride: 0)
+        renderEncoder.setFragmentTexture(BrickWallTextureD, index: textureIDs.flat)
+        renderEncoder.setFragmentTexture(BrickWallTextureN, index: textureIDs.Normal)
+        renderEncoder.setVertexTexture(BrickWallTextureH, index: textureIDs.Displacement)
+        renderEncoder.setFrontFacing(.counterClockwise)
+        renderEncoder.setCullMode(.back)
+        //tesselateWall?.drawTesselated(renderEncoder: renderEncoder)
+//        tesselateWall?.drawTesselated(renderEncoder: renderEncoder)
+  //     renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: 6, indexType: .uint32, indexBuffer: wallIndex!, indexBufferOffset: 0, instanceCount: 1)
+
+        renderEncoder.drawIndexedPatches(numberOfPatchControlPoints: 3, patchStart: 0, patchCount: 2, patchIndexBuffer: nil, patchIndexBufferOffset: 0, controlPointIndexBuffer: wallIndex!, controlPointIndexBufferOffset: 0, instanceCount: 1, baseInstance: 0)
+
+        renderEncoder.endEncoding()
+
+        commandBuffer.present(view.currentDrawable!)
+        commandBuffer.commit()
        
     }
 

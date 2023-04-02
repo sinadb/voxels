@@ -15,6 +15,7 @@ enum transformation_mode : int {
     rotate_first = 1
     };
 
+    
 
 enum class vertexBufferIDs : int {
     vertexBuffers = 0,
@@ -30,6 +31,7 @@ enum class textureIDs : int {
     cubeMap  = 0,
     flat = 1,
     Normal = 2,
+    Displacement = 3,
 };
 
 enum class fragmentBufferIDs : int {
@@ -42,6 +44,7 @@ constant bool no_texture [[function_constant(2)]];
 constant bool is_sky_box [[function_constant(3)]];
 constant bool fuzzy [[function_constant(4)]];
 constant bool has_normal_map [[function_constant(5)]];
+constant bool has_displacement_map [[function_constant(6)]];
 
 float4 post_transform_rotate_first(Transforms t, float4 pos){
     return t.Projection*t.Camera*t.Translate*t.Rotation*t.Scale*pos;
@@ -208,7 +211,7 @@ fragment float4 render_to_cube_fragment(VertexOutCube in [[stage_in]],
 vertex VertexOut simple_shader_vertex(VertexIn in [[stage_in]],
                                       constant Transforms* transforms [[buffer(vertexBufferIDs::uniformBuffers)]],
                                       constant int &transform_mode[[buffer(vertexBufferIDs::order_of_rot_tran)]],
-                                      device simd_float4* colour_out [[buffer(vertexBufferIDs::colour)]],
+                                      constant simd_float4* colour_out [[buffer(vertexBufferIDs::colour)]],
                                       uint index [[instance_id]]
                             ){
     VertexOut out;
@@ -250,40 +253,55 @@ fragment float4 simple_shader_fragment(VertexOut in [[stage_in]],
                                        texture2d<float> normalMap
                                        [[texture(textureIDs::Normal),function_constant(has_normal_map)]],
                                        sampler textureSampler [[sampler(0)]],
-                                       constant float4 &colour [[buffer(fragmentBufferIDs::colours),function_constant(no_texture)]]
+                                       constant float4 &colour [[buffer(fragmentBufferIDs::colours),function_constant(no_texture)]],
+                                       constant simd_float4& eye [[buffer(10)]]
                                        ){
     
-    simd_float3 light_pos = simd_float3(30,0,0);
+    //return float4(1,0,0,1);
+    //simd_float3 eye = simd_float3(50,0,0);
+    //return colour;
+    return float4(eye.xyz,1);
+    simd_float3 light_pos = simd_float3(50,50,-20);
+    simd_float3 L = normalize(light_pos - in.world_pos);
+    simd_float3 V = normalize(eye.xyz - in.world_pos);
+    float specularExponent = 150;
+    simd_float3 H = normalize(L+V);
     simd_float3 light_vector = normalize(light_pos - in.world_pos);
+    simd_float3 directional_light = simd_float3(1,1,0);
+   
     //light_vector = simd_float3(1,0,0);
-    if(has_normal_map){
-        simd_float4 colour = flatMap.sample(textureSampler, in.tex);
+  
+        simd_float4 outcolour = flatMap.sample(textureSampler, in.tex);
         simd_float3 tangent = normalize(in.tangent - dot(in.tangent, in.normal) * in.normal);
         simd_float3 bitangent = normalize(cross(in.normal, tangent));
         simd_float3x3 TBN = simd_float3x3(normalize(tangent),bitangent,normalize(in.normal));
         float3 normal = (normalMap.sample(textureSampler, in.tex)).rgb;
         normal = (normal * 2.0 - 1.0);
-        //normal.xy *= 30.0;
+        //normal.xy *= 3.0;
         normal = normalize(normal);
         //normal = normalize(simd_float3(0.3,0,1));
         normal = normalize(TBN * normal);
         float attenuation = saturate(dot(light_vector,normal));
-        return colour;
-        return attenuation*colour;
+        float specularFactor = powr(saturate(dot(normal, H)), 150.0) * 50;
+        attenuation = specularFactor;
+    attenuation += saturate(dot(normal,L));
+    return float4(specularFactor,0,0,1);
+    return attenuation*outcolour;
         
-    }
-    if(cube){
-        return cubeMap.sample(textureSampler, in.tex_3);
-    }
-    else if(flat){
-        return flatMap.sample(textureSampler, in.tex);
-    }
-    else if(no_texture){
-        return colour;
-    }
-    else {
-        return in.colour;
-    }
+    
+//    else if(cube){
+//        return cubeMap.sample(textureSampler, in.tex_3);
+//    }
+//    else if(flat && !has_normal_map){
+//        return float4(1,0,0,1);
+//        return flatMap.sample(textureSampler, in.tex);
+//    }
+//    else if(no_texture){
+//        return colour;
+//    }
+//    else {
+//        return in.colour;
+//    }
     
 }
 
@@ -335,4 +353,100 @@ fragment float4 cubeMap_reflection_fragment(VertexOut in [[stage_in]],
     reflection_vector = normalize(reflection_vector);
     //return float4(reflection_vector,1);
     return cubeMap.sample(textureSampler, reflection_vector);
+}
+
+
+kernel void tess_factor_tri(device MTLTriangleTessellationFactorsHalf& factors [[buffer(0)]], constant int& value [[buffer(1)]]){
+    
+    
+        factors.edgeTessellationFactor[0] = value;
+        factors.edgeTessellationFactor[1] = value;
+        factors.edgeTessellationFactor[2] = value;
+        factors.insideTessellationFactor = value;
+}
+    
+    template<typename T>
+    T interpolate_tri(T a, T b, T c, float3 coord){
+        return a*coord.x + b*coord.y + c*coord.z;
+    }
+
+    
+struct PatchIn {
+        patch_control_point<VertexIn> controlPoints;
+};
+[[patch(triangle,3)]]
+    
+vertex VertexOut post_tesselation_tri(
+                                      PatchIn patch [[stage_in]],
+                                      constant Transforms*transforms[[buffer(vertexBufferIDs::uniformBuffers)]],
+                                      constant int &transform_mode[[buffer(vertexBufferIDs::order_of_rot_tran)]],
+                                      uint index [[instance_id]],
+                                      float3 positionInPatch [[position_in_patch]],
+                                      texture2d<float> displacement [[texture(textureIDs::Displacement),function_constant(has_displacement_map)]],
+                                      sampler textureSampler [[sampler(0),function_constant(has_displacement_map)]]
+                                      ){
+                                          Transforms current_transform = transforms[index];
+                                          VertexOut out;
+                                         
+                                          float4 aPos = (patch.controlPoints[2].pos);
+                                          float4 bPos = (patch.controlPoints[1].pos);
+                                          float4 cPos = (patch.controlPoints[0].pos);
+                                          float4 aTangent = (patch.controlPoints[2].tangent);
+                                          float4 bTangent = (patch.controlPoints[1].tangent);
+                                          float4 cTangent = (patch.controlPoints[0].tangent);
+                                          float3 aNormal = (patch.controlPoints[2].normal);
+                                          float3 bNormal = (patch.controlPoints[1].normal);
+                                          float3 cNormal = (patch.controlPoints[0].normal);
+                                          float2 aTex = patch.controlPoints[2].tex;
+                                          float2 bTex = patch.controlPoints[1].tex;
+                                          float2 cTex = patch.controlPoints[0].tex;
+                                          
+                                          out.colour = float4(1,0,0,1);
+                                          
+                                          
+                                          float4 new_pos = interpolate_tri(aPos,bPos,cPos,positionInPatch);
+                                          
+                                          out.normal = interpolate_tri(aNormal,bNormal,cNormal,positionInPatch);
+                                          
+                                          out.tangent = interpolate_tri(aTangent,bTangent,cTangent,positionInPatch).xyz;
+                                                         
+                                          out.tex = interpolate_tri(aTex, bTex, cTex, positionInPatch);
+                                         
+                                         
+                                                         out.tangent = normalize(simd_float3(current_transform.Rotation*current_transform.Scale*float4(out.tangent,1)));
+                                          
+                                          if(has_displacement_map){
+                                              float height =  displacement.sample(textureSampler, out.tex).r;
+                                             
+                                                  new_pos.xyz += height * .6 * out.normal;
+                                              
+                                              
+                                          }
+                                       
+                                                         
+                                                         out.normal = normalize((current_transform.Rotation*float4(out.normal,0)).xyz);
+                                                       
+                                                         out.bitangent = normalize(cross(out.normal, out.tangent));
+                                          
+                                        
+                                          
+                                                        
+                                                     //
+                                                         if(transform_mode == transformation_mode::translate_first){
+                                                             out.pos = post_transform_translate_first(current_transform, new_pos);
+                                                             out.world_pos = (current_transform.Rotation*current_transform.Translate*current_transform.Scale*new_pos).xyz;
+
+                                                         }
+                                                         else {
+                                                             out.pos = post_transform_rotate_first(current_transform, new_pos);
+                                                             out.world_pos = (current_transform.Translate*current_transform.Rotation*current_transform.Scale*new_pos).xyz;
+
+                                                         }
+                                         
+                                          return out;
+                                          
+                                          
+                                          
+
+    
 }

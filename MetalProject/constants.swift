@@ -6,6 +6,12 @@
 //
 
 import Foundation
+import Metal
+import MetalKit
+import AppKit
+
+
+
 
 struct transformation_mode {
     static let translate_first = 0
@@ -27,6 +33,7 @@ struct textureIDs {
     static let cubeMap  = 0
     static let flat = 1
     static let Normal = 2
+    static let Displacement = 3
 }
 
 struct fragmentBufferIDs {
@@ -42,6 +49,7 @@ struct FunctionConstantValues {
     static let is_skyBox = 3
     static let fuzzy = 4
     static let has_normalMap = 5
+    static let has_displacementMap = 6
 }
 
 
