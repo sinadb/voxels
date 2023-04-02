@@ -20,13 +20,9 @@ struct transformation_mode {
 
 struct vertexBufferIDs {
     static let vertexBuffers = 0
-    static let uniformBuffers = 1
-    static let instanceBuffers = 2
-    static let skyMap = 3
-    static let order_of_rot_tran = 4
-    static let camera_origin = 5
-    static let colour = 6
-    static let points_in_sphere = 7
+    static let instanceConstant = 1
+    static let frameConstant = 2
+    static let colour = 3
 }
 
 struct textureIDs {

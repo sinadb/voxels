@@ -25,8 +25,8 @@ class ViewController: NSViewController {
                // print(origin,direction)
                 var camera = simd_float4x4(eye: origin, center: direction, up: simd_float3(0,1,0))
                 //renderer.currentScene.updateCamera(with: camera)
-                self.renderer.currentScene.eye = origin
-                self.renderer.currentScene.direction = direction
+//                self.renderer.currentScene.eye = origin
+//                self.renderer.currentScene.direction = direction
             }
 
                 cameraState = false
@@ -71,41 +71,7 @@ class ViewController: NSViewController {
     @IBOutlet weak var skybox1: NSButton!
     @IBOutlet weak var skybox0: NSButton!
     
-    @IBAction func updateSkyBox(_ sender: NSButton) {
-       
-        
-        switch sender {
-        case skybox0:
-            if(skybox0.state == .on){
-                
-                return
-            }
-            else{
-                
-                skybox0.state = .on
-                skybox1.state = .off
-                self.renderer.activeSkyBox.update_texture(with: self.renderer.skyboxTexture!)
-                renderer.skymapChanged = true
-                
-                return
-            }
-        case skybox1:
-            if(skybox1.state == .on){
-                return
-            }
-            else{
-                
-                skybox1.state = .on
-                skybox0.state = .off
-                self.renderer.activeSkyBox.update_texture(with: self.renderer.skyboxTexture1!)
-                renderer.skymapChanged = true
-               
-                return
-            }
-        default:
-            return
-        }
-    }
+   
     var mtkView: MTKView!
     var renderer: Renderer!
     

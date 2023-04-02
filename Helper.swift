@@ -138,33 +138,74 @@ func createVertexDescriptor(attributes : Attribute...) -> MTLVertexDescriptor {
 class Mesh{
     
     
+    let device : MTLDevice
+    var Mesh : MTKMesh?
     
     var MeshCamera : Camera?
-    var uniformBuffersArray = [UniformBuffer]()
+    
+    
+    var BufferArray = [UniformBuffer]()
     var texturesArray = [Texture]()
     var NormalTextureArray = [Texture]()
     var DisplacementTextureArray = [Texture]()
-    let device : MTLDevice
+    
+    
+   
     var vertexData : [Float]?
     var indexData : [UInt16]?
     var vertexBuffer : MTLBuffer?
     var indexBuffer : MTLBuffer?
     var indexBufferArray = [MTLBuffer]()
-    var Mesh : MTKMesh?
-    var instanceTransformData = [Transforms]()
+  
+    
+    
+    var instanceConstantData = [InstanceConstants]()
     var instanceColourData = [simd_float4]()
-    var instanceTransformModeData = [Int]()
-    var instaceTransformBuffer : MTLBuffer?
+
+    
+    var instaceConstantBuffer : MTLBuffer?
     var instanceColourBuffer : MTLBuffer?
-    var instanceTransformModeBuffer : MTLBuffer?
-    var instanceBuffer : MTLBuffer?
-    var no_instances = 0
+    
+  
+   
+    var no_instances = 1
+    
+    
+    
     var tesselationFactorBuffer : MTLBuffer?
     var tesselationLevelBuffer : MTLBuffer?
     var computePipeLineState : MTLComputePipelineState?
     var has_normal = false
     var has_displacement = false
     
+    
+    init?(device : MTLDevice, Mesh : MDLMesh, with label : String = "NoLabel"){
+        self.device = device
+        let allocator = MTKMeshBufferAllocator(device: device)
+        do {
+            let mdlMeshVD = MDLVertexDescriptor()
+            mdlMeshVD.attributes[0] = MDLVertexAttribute(name: MDLVertexAttributePosition, format: .float4, offset: 0, bufferIndex: 0)
+            
+            mdlMeshVD.attributes[1] = MDLVertexAttribute(name: MDLVertexAttributeNormal, format: .float3, offset: 16, bufferIndex: 0)
+            mdlMeshVD.attributes[2] = MDLVertexAttribute(name: MDLVertexAttributeTextureCoordinate, format: .float2, offset: 28, bufferIndex: 0)
+            
+            mdlMeshVD.attributes[3] = MDLVertexAttribute(name: MDLVertexAttributeTangent, format: .float4, offset: 36, bufferIndex: 0)
+            
+            mdlMeshVD.attributes[4] = MDLVertexAttribute(name: MDLVertexAttributeBitangent, format: .float4, offset: 52, bufferIndex: 0)
+            mdlMeshVD.layouts[0] = MDLVertexBufferLayout(stride: 68)
+            Mesh.vertexDescriptor = mdlMeshVD
+            try self.Mesh = MTKMesh(mesh: Mesh, device: device)
+            print("\(label) Mesh created")
+        }
+        catch{
+            print(error)
+            print("Failed to create Mesh \(label)")
+            return nil
+        }
+        
+       
+        initaliseBuffers()
+    }
     
     init?(device : MTLDevice, address : URL, with label : String = "NoLabel", with tesselationLevel : Int){
         self.device = device
@@ -406,11 +447,7 @@ class Mesh{
                 }
             }
         }
-       
-//        let index0 = indexBufferArray[1].contents().bindMemory(to: UInt32.self, capacity: 30)
-//        for i in 0...29 {
-//            print((index0 + i).pointee)
-//        }
+ 
         print(texturesArray.count)
     }
     
@@ -422,37 +459,15 @@ class Mesh{
         initaliseBuffers()
         
     }
-    init?(device : MTLDevice, Mesh : MDLMesh, with label : String = "NoLabel"){
-        self.device = device
-        let allocator = MTKMeshBufferAllocator(device: device)
-        do {
-            let mdlMeshVD = MDLVertexDescriptor()
-            mdlMeshVD.attributes[0] = MDLVertexAttribute(name: MDLVertexAttributePosition, format: .float4, offset: 0, bufferIndex: 0)
-            
-            mdlMeshVD.attributes[1] = MDLVertexAttribute(name: MDLVertexAttributeNormal, format: .float3, offset: 16, bufferIndex: 0)
-            mdlMeshVD.attributes[2] = MDLVertexAttribute(name: MDLVertexAttributeTextureCoordinate, format: .float2, offset: 28, bufferIndex: 0)
-            
-            mdlMeshVD.attributes[3] = MDLVertexAttribute(name: MDLVertexAttributeTangent, format: .float4, offset: 36, bufferIndex: 0)
-            
-            mdlMeshVD.attributes[4] = MDLVertexAttribute(name: MDLVertexAttributeBitangent, format: .float4, offset: 52, bufferIndex: 0)
-            mdlMeshVD.layouts[0] = MDLVertexBufferLayout(stride: 68)
-            Mesh.vertexDescriptor = mdlMeshVD
-            try self.Mesh = MTKMesh(mesh: Mesh, device: device)
-            print("\(label) Mesh created")
-        }
-        catch{
-            print(error)
-            print("Failed to create Mesh \(label)")
-            return nil
-        }
-        initaliseBuffers()
-    }
+    
     
     func initaliseBuffers(){
         if Mesh != nil{
-            print("Test Mesh")
             vertexBuffer = Mesh?.vertexBuffers[0].buffer
-            indexBuffer = Mesh?.submeshes[0].indexBuffer.buffer
+            for submesh in (Mesh?.submeshes)! {
+                indexBufferArray.append(submesh.indexBuffer.buffer)
+            }
+            
         }
         else{
             vertexBuffer = device.makeBuffer(bytes: &vertexData, length: MemoryLayout<Float>.stride*(vertexData!.count), options: [])
@@ -462,26 +477,26 @@ class Mesh{
         
     }
     
-    func createAndAddUniformBuffer(bytes :  UnsafeRawPointer , length : Int, at index : Int, for device : MTLDevice, for functiontype : MTLFunctionType? =  nil) {
-        
-        let buffer = device.makeBuffer(bytes: bytes, length: length)!
-        let index = index
-        let function = functiontype ?? .vertex
-        var out = UniformBuffer(buffer: buffer, index: index,functionType: function)
-        add_uniform_buffer(buffers: out)
-        
-    }
+//    func createAndAddUniformBuffer(bytes :  UnsafeRawPointer , length : Int, at index : Int, for device : MTLDevice, for functiontype : MTLFunctionType? =  nil) {
+//
+//        let buffer = device.makeBuffer(bytes: bytes, length: length)!
+//        let index = index
+//        let function = functiontype ?? .vertex
+//        var out = UniformBuffer(buffer: buffer, index: index,functionType: function)
+//        add_uniform_buffer(buffers: out)
+//
+//    }
     
-    func attach_camera_to_mesh(to camera : Camera){
-        MeshCamera = camera
-        MeshCamera?.transformBuffer.append(uniformBuffersArray[0])
-    }
+//    func attach_camera_to_mesh(to camera : Camera){
+//        MeshCamera = camera
+//        MeshCamera?.transformBuffer.append(uniformBuffersArray[0])
+//    }
     
-    func add_uniform_buffer(buffers : UniformBuffer...){
-        for b in buffers {
-            uniformBuffersArray.append(b)
-        }
-    }
+//    func add_uniform_buffer(buffers : UniformBuffer...){
+//        for b in buffers {
+//            uniformBuffersArray.append(b)
+//        }
+//    }
     
     func add_textures(textures : Texture...){
         for t in textures {
@@ -493,77 +508,36 @@ class Mesh{
     
     
     
-    func createInstance(with transforms : Transforms..., and colour : simd_float4..., add transformMode : Int...){
+    func createInstance(with transforms : InstanceConstants..., and colour : simd_float4...){
         for t in transforms {
-            instanceTransformData.append(t)
+            instanceConstantData.append(t)
             no_instances += 1
         }
         for c in colour{
             instanceColourData.append(c)
         }
-        for mode in transformMode {
-            instanceTransformModeData.append(mode)
-        }
+       
     }
     func init_instance_buffers(){
         instanceColourBuffer = device.makeBuffer(bytes: &instanceColourData, length: MemoryLayout<simd_float4>.stride*instanceColourData.count, options: [])
-        instaceTransformBuffer = device.makeBuffer(bytes: &instanceTransformData, length: MemoryLayout<Transforms>.stride*instanceTransformData.count, options: [])
-        instanceTransformModeBuffer = device.makeBuffer(bytes: &instanceTransformModeData, length: MemoryLayout<Int>.stride*instanceTransformModeData.count, options: [])
-        let transformBuffer = UniformBuffer(buffer: instaceTransformBuffer!, index: vertexBufferIDs.uniformBuffers, count: no_instances)
+        
+        
+        instaceConstantBuffer = device.makeBuffer(bytes: &instanceConstantData , length: MemoryLayout<InstanceConstants>.stride*instanceConstantData.count, options: [])
+        
+        
+     
+        
+        let instanceBuffer = UniformBuffer(buffer: instaceConstantBuffer!, index: vertexBufferIDs.instanceConstant)
+        
         let colourBuffer = UniformBuffer(buffer: instanceColourBuffer!, index: vertexBufferIDs.colour)
-        let transformModeBuffer = UniformBuffer(buffer: instanceTransformModeBuffer!, index: vertexBufferIDs.order_of_rot_tran)
-        add_uniform_buffer(buffers: colourBuffer,transformModeBuffer)
-        uniformBuffersArray.insert(transformBuffer, at: 0)
+        
+        BufferArray.append(instanceBuffer)
+        BufferArray.append(colourBuffer)
+      
     }
     
 
-    
-    func updateUniformBuffer(with newData : inout Transforms){
-        for buffer in uniformBuffersArray {
-            if (buffer.index == vertexBufferIDs.uniformBuffers){
-                if let camera = MeshCamera {
-                 
-                    newData.Camera = simd_float4x4(eye: camera.eye, center: camera.eye + camera.centre, up: simd_float3(0,1,0))
-                }
-                buffer.buffer.contents().copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride)
-            }
-        }
-        
-    }
-    func updateUniformBuffer(with newData : inout Transforms, at offset : Int){
-//        for buffer in uniformBuffersArray {
-//            if (buffer.index == vertexBufferIDs.uniformBuffers){
-//                buffer.buffer.contents().advanced(by: offset * MemoryLayout<Transforms>.stride).copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride)
-//            }
-//        }
-        if let camera = MeshCamera {
-           
-            newData.Camera = simd_float4x4(eye: camera.eye, center: camera.eye + camera.centre, up: simd_float3(0,1,0))
-        }
-        uniformBuffersArray[0].buffer.contents().advanced(by: offset * MemoryLayout<Transforms>.stride).copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride)
-        
-    }
-    
-    func updateUniformBuffer(with newData : inout [Transforms]){
-        if let camera = MeshCamera {
-            for i in 0..<newData.count {
-               
-                newData[i].Camera = simd_float4x4(eye: camera.eye, center: camera.eye + camera.centre, up: simd_float3(0,1,0))
-            }
-        }
-       
-        for buffer in uniformBuffersArray {
-            if (buffer.index == vertexBufferIDs.uniformBuffers){
-                buffer.buffer.contents().copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride*newData.count)
-            }
-        }
-        
-    }
-    
-    func updateUniformBuffer(with newData : inout [Transforms], at offset : Int){
 
-        uniformBuffersArray[0].buffer.contents().advanced(by: offset * MemoryLayout<Transforms>.stride*6).copyMemory(from: &newData , byteCount: MemoryLayout<Transforms>.stride*6)
-    }
     
     func updateTexture(with new_texture : Texture){
         for i in 0..<texturesArray.count{
@@ -573,48 +547,48 @@ class Mesh{
         }
     }
     
-    func draw(renderEncoder : MTLRenderCommandEncoder){
-       
-        for buffer in uniformBuffersArray {
-            if let function = buffer.functionType {
-                if(function == .fragment){
-                    renderEncoder.setFragmentBuffer(buffer.buffer, offset: 0, index: buffer.index)
-                    continue
-                }
-            }
-            renderEncoder.setVertexBuffer(buffer.buffer, offset: 0, index: buffer.index)
-        }
-        if (!(indexBufferArray.isEmpty)){
-            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-            for i in 0..<indexBufferArray.count{
-                renderEncoder.setFragmentTexture(texturesArray[i].texture, index: texturesArray[i].index)
-                renderEncoder.setFragmentTexture(texturesArray[i+1].texture, index: texturesArray[i+1].index)
-                let submesh = Mesh!.submeshes[i]
-              
-                renderEncoder.setVertexBuffer(instanceBuffer, offset: 0, index: 2)
-                renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: indexBufferArray[i], indexBufferOffset: submesh.indexBuffer.offset)
-            }
-           
-            return
-           
-        }
-        for texture in texturesArray {
-            renderEncoder.setFragmentTexture(texture.texture, index: texture.index)
-        }
-        if Mesh != nil{
-            let submesh = Mesh!.submeshes[0]
-            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: indexBuffer!, indexBufferOffset: submesh.indexBuffer.offset)
-        }
-        else{
-            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: indexData!.count, indexType: .uint16, indexBuffer: indexBuffer!, indexBufferOffset: 0, instanceCount: 1)
-        }
-        
-    }
-    
+//    func draw(renderEncoder : MTLRenderCommandEncoder){
+//
+//        for buffer in BufferArray {
+//            if let function = buffer.functionType {
+//                if(function == .fragment){
+//                    renderEncoder.setFragmentBuffer(buffer.buffer, offset: 0, index: buffer.index)
+//                    continue
+//                }
+//            }
+//            renderEncoder.setVertexBuffer(buffer.buffer, offset: 0, index: buffer.index)
+//        }
+//        if (!(indexBufferArray.isEmpty)){
+//            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+//            for i in 0..<indexBufferArray.count{
+//                renderEncoder.setFragmentTexture(texturesArray[i].texture, index: texturesArray[i].index)
+//                renderEncoder.setFragmentTexture(texturesArray[i+1].texture, index: texturesArray[i+1].index)
+//                let submesh = Mesh!.submeshes[i]
+//
+//                renderEncoder.setVertexBuffer(instanceBuffer, offset: 0, index: 2)
+//                renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: indexBufferArray[i], indexBufferOffset: submesh.indexBuffer.offset)
+//            }
+//
+//            return
+//
+//        }
+//        for texture in texturesArray {
+//            renderEncoder.setFragmentTexture(texture.texture, index: texture.index)
+//        }
+//        if Mesh != nil{
+//            let submesh = Mesh!.submeshes[0]
+//            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+//            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: indexBuffer!, indexBufferOffset: submesh.indexBuffer.offset)
+//        }
+//        else{
+//            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+//            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: indexData!.count, indexType: .uint16, indexBuffer: indexBuffer!, indexBufferOffset: 0, instanceCount: 1)
+//        }
+//
+//    }
+//
     func draw(renderEncoder : MTLRenderCommandEncoder, with instances : Int){
-        for buffer in uniformBuffersArray {
+        for buffer in BufferArray {
             if let function = buffer.functionType {
                 if(function == .fragment){
                     renderEncoder.setFragmentBuffer(buffer.buffer, offset: 0, index: buffer.index)
@@ -624,96 +598,83 @@ class Mesh{
             renderEncoder.setVertexBuffer(buffer.buffer, offset: 0, index: buffer.index)
         }
         
-        if (!(indexBufferArray.isEmpty)){
-            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-            for i in 0..<indexBufferArray.count{
-                renderEncoder.setFragmentTexture(texturesArray[i].texture, index: texturesArray[i].index)
-                renderEncoder.setFragmentTexture(texturesArray[i+1].texture, index: texturesArray[i+1].index)
-                let submesh = Mesh!.submeshes[i]
-              
-                renderEncoder.setVertexBuffer(instanceBuffer, offset: 0, index: 2)
-                renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: indexBufferArray[i], indexBufferOffset: submesh.indexBuffer.offset)
-            }
-           
-            return
-           
-        }
-        
         for texture in texturesArray {
             renderEncoder.setFragmentTexture(texture.texture, index: texture.index)
         }
         if Mesh != nil{
-            let submesh = Mesh!.submeshes[0]
             renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-            renderEncoder.setVertexBuffer(instanceBuffer, offset: 0, index: 2)
-            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: indexBuffer!, indexBufferOffset: submesh.indexBuffer.offset, instanceCount: instances)
+            for i in 0..<indexBufferArray.count{
+                let submesh = Mesh!.submeshes[i]
+                renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: indexBufferArray[i], indexBufferOffset: submesh.indexBuffer.offset, instanceCount: no_instances)
+            }
+           
+            return
         }
         else{
             renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-            renderEncoder.setVertexBuffer(instanceBuffer, offset: 0, index: 2)
             renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: indexData!.count, indexType: .uint16, indexBuffer: indexBuffer!, indexBufferOffset: 0, instanceCount: instances)
         }
     }
-    func drawTesselated(renderEncoder : MTLRenderCommandEncoder){
-        
-        let commandQueue = device.makeCommandQueue()
-        guard let commandBuffer = commandQueue?.makeCommandBuffer() else {return}
-        guard let computeEndoer = commandBuffer.makeComputeCommandEncoder() else {return}
-        computeEndoer.setComputePipelineState(computePipeLineState!)
-        computeEndoer.setBuffer(tesselationFactorBuffer, offset: 0, index: 0)
-        computeEndoer.setBuffer(tesselationLevelBuffer, offset: 0, index: 1)
-        computeEndoer.dispatchThreadgroups(MTLSize(width: 1,height: 1,depth: 1), threadsPerThreadgroup: MTLSize(width: 1,height: 1,depth: 1))
-        computeEndoer.endEncoding()
-        commandBuffer.commit()
-        commandBuffer.waitUntilCompleted()
-       
-        for buffer in uniformBuffersArray {
-            if let function = buffer.functionType {
-                if(function == .fragment){
-                    renderEncoder.setFragmentBuffer(buffer.buffer, offset: 0, index: buffer.index)
-                    continue
-                }
-            }
-            renderEncoder.setVertexBuffer(buffer.buffer, offset: 0, index: buffer.index)
-        }
-        renderEncoder.setTessellationFactorBuffer(tesselationFactorBuffer, offset: 0, instanceStride: 0)
-        if (!(indexBufferArray.isEmpty)){
-            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-            for i in 0..<indexBufferArray.count{
-                renderEncoder.setFragmentTexture(texturesArray[i].texture, index: texturesArray[i].index)
-                if(has_normal){
-                    renderEncoder.setFragmentTexture(NormalTextureArray[i].texture, index: NormalTextureArray[i].index)
-                }
-                if(has_displacement){
-                    renderEncoder.setVertexTexture(DisplacementTextureArray[i].texture, index:DisplacementTextureArray[i].index )
-                }
-
-                let submesh = Mesh!.submeshes[i]
-              
-                renderEncoder.setVertexBuffer(instanceBuffer, offset: 0, index: 2)
-                renderEncoder.drawIndexedPatches(numberOfPatchControlPoints: 3, patchStart: 0, patchCount: submesh.indexCount/3, patchIndexBuffer: nil, patchIndexBufferOffset: 0, controlPointIndexBuffer: indexBufferArray[i], controlPointIndexBufferOffset: 0, instanceCount: 1, baseInstance: 0)
-                
-//                renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: indexBufferArray[i], indexBufferOffset: submesh.indexBuffer.offset)
-            }
-           
-            return
-           
-        }
-        for texture in texturesArray {
-            renderEncoder.setFragmentTexture(texture.texture, index: texture.index)
-        }
-        if Mesh != nil{
-            let submesh = Mesh!.submeshes[0]
-            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: indexBuffer!, indexBufferOffset: submesh.indexBuffer.offset)
-        }
-        else{
-            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: indexData!.count, indexType: .uint16, indexBuffer: indexBuffer!, indexBufferOffset: 0, instanceCount: 1)
-        }
-        
-    }
-    
+//    func drawTesselated(renderEncoder : MTLRenderCommandEncoder){
+//        
+//        let commandQueue = device.makeCommandQueue()
+//        guard let commandBuffer = commandQueue?.makeCommandBuffer() else {return}
+//        guard let computeEndoer = commandBuffer.makeComputeCommandEncoder() else {return}
+//        computeEndoer.setComputePipelineState(computePipeLineState!)
+//        computeEndoer.setBuffer(tesselationFactorBuffer, offset: 0, index: 0)
+//        computeEndoer.setBuffer(tesselationLevelBuffer, offset: 0, index: 1)
+//        computeEndoer.dispatchThreadgroups(MTLSize(width: 1,height: 1,depth: 1), threadsPerThreadgroup: MTLSize(width: 1,height: 1,depth: 1))
+//        computeEndoer.endEncoding()
+//        commandBuffer.commit()
+//        commandBuffer.waitUntilCompleted()
+//       
+//        for buffer in BufferArray {
+//            if let function = buffer.functionType {
+//                if(function == .fragment){
+//                    renderEncoder.setFragmentBuffer(buffer.buffer, offset: 0, index: buffer.index)
+//                    continue
+//                }
+//            }
+//            renderEncoder.setVertexBuffer(buffer.buffer, offset: 0, index: buffer.index)
+//        }
+//        renderEncoder.setTessellationFactorBuffer(tesselationFactorBuffer, offset: 0, instanceStride: 0)
+//        if (!(indexBufferArray.isEmpty)){
+//            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+//            for i in 0..<indexBufferArray.count{
+//                renderEncoder.setFragmentTexture(texturesArray[i].texture, index: texturesArray[i].index)
+//                if(has_normal){
+//                    renderEncoder.setFragmentTexture(NormalTextureArray[i].texture, index: NormalTextureArray[i].index)
+//                }
+//                if(has_displacement){
+//                    renderEncoder.setVertexTexture(DisplacementTextureArray[i].texture, index:DisplacementTextureArray[i].index )
+//                }
+//
+//                let submesh = Mesh!.submeshes[i]
+//              
+//                renderEncoder.setVertexBuffer(instanceBuffer, offset: 0, index: 2)
+//                renderEncoder.drawIndexedPatches(numberOfPatchControlPoints: 3, patchStart: 0, patchCount: submesh.indexCount/3, patchIndexBuffer: nil, patchIndexBufferOffset: 0, controlPointIndexBuffer: indexBufferArray[i], controlPointIndexBufferOffset: 0, instanceCount: 1, baseInstance: 0)
+//                
+////                renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: indexBufferArray[i], indexBufferOffset: submesh.indexBuffer.offset)
+//            }
+//           
+//            return
+//           
+//        }
+//        for texture in texturesArray {
+//            renderEncoder.setFragmentTexture(texture.texture, index: texture.index)
+//        }
+//        if Mesh != nil{
+//            let submesh = Mesh!.submeshes[0]
+//            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+//            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: indexBuffer!, indexBufferOffset: submesh.indexBuffer.offset)
+//        }
+//        else{
+//            renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
+//            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: indexData!.count, indexType: .uint16, indexBuffer: indexBuffer!, indexBufferOffset: 0, instanceCount: 1)
+//        }
+//        
+//    }
+//    
 }
 
 class functionConstant {
