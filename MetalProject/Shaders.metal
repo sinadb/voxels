@@ -577,9 +577,9 @@ vertex VertexOut post_tesselation_tri(
                                                         
 
                                           if(has_displacement_map){
-                                              float height =  displacement.sample(textureSampler, out.tex).r;
+                                              float height =   displacement.sample(textureSampler, out.tex).r;
 
-                                                  new_pos.xyz += height * .3 * out.world_normal.xyz;
+                                                  new_pos.xyz += height * .6 * interpolate_tri(aNormal,bNormal,cNormal,positionInPatch).xyz;
 
                                           }
 

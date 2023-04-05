@@ -751,7 +751,7 @@ class Renderer : NSObject, MTKViewDelegate {
         }
         
         
-        var wallModelMatrix = create_modelMatrix(translation: simd_float3(0,0,-3), rotation: simd_float3(0,0,0), scale: simd_float3(1))
+        var wallModelMatrix = create_modelMatrix(translation: simd_float3(0,0,-3), rotation: simd_float3(-45,0,0), scale: simd_float3(1))
         wallMeshDisplace.createInstance(with: wallModelMatrix, and: simd_float4(0), with: testCamera)
         wallMeshDisplace.init_instance_buffers()
         wallFrameConst = FrameConstants(viewMatrix: testCamera.cameraMatrix, projectionMatrix: projectionMatrix)
