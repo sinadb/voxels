@@ -23,6 +23,7 @@ struct vertexBufferIDs {
     static let instanceConstant = 1
     static let frameConstant = 2
     static let colour = 3
+    static let lightConstant = 4
 }
 
 struct textureIDs {
@@ -30,6 +31,7 @@ struct textureIDs {
     static let flat = 1
     static let Normal = 2
     static let Displacement = 3
+    static let depth = 4
 }
 
 struct fragmentBufferIDs {
@@ -46,6 +48,7 @@ struct FunctionConstantValues {
     static let fuzzy = 4
     static let has_normalMap = 5
     static let has_displacementMap = 6
+    static let shadow_map = 7
 }
 
 

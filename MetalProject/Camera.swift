@@ -11,7 +11,7 @@ import MetalKit
 import AppKit
 
 class Camera {
-    var Mesh : Mesh?
+    var scene : DefaultScene?
     var eye : simd_float3
     var centre : simd_float3
     var previous_x : Float?
@@ -23,7 +23,9 @@ class Camera {
     var height : Float
     var totalChangeTheta : Float =  0
     var totalChangePhi : Float = 0
-//    var up : simd_float3
+    var cameraMatrix : simd_float4x4
+    var isOrtho = false
+    
 //    var across : simd_float3
 //    var forward : simd_float3
     
@@ -33,8 +35,12 @@ class Camera {
         self.centre = centre
         width = 3024/2
         height = 1726/2
+      
+        cameraMatrix = simd_float4x4(eye: eye, center: eye + centre, up: simd_float3(0,1,0))
        
     }
+    
+   
     
     func reset_mouse(){
         mouse_x = nil
@@ -68,7 +74,6 @@ class Camera {
     func update(){
         var delta_x = (mouse_x ?? (previous_x ?? 0 )) - (previous_x ?? 0)
         var delta_y = (mouse_y ?? (previous_y ?? 0 )) - (previous_y ?? 0)
-        print(mouse_x,previous_x)
         let deltaTheta = (delta_x/(2*width))*360
         let deltaPhi = (delta_y/(2*height))*360
         totalChangePhi += deltaPhi
@@ -78,24 +83,15 @@ class Camera {
         previous_x = mouse_x
         previous_y = mouse_y
         
-        var camera = simd_float4x4(eye: eye, center: centre + eye, up: simd_float3(0,1,0))
-        var ptr = Mesh!.BufferArray[0].buffer.contents().bindMemory(to: InstanceConstants.self, capacity: Mesh!.no_instances)
+        cameraMatrix = simd_float4x4(eye: eye, center: centre + eye, up: simd_float3(0,1,0))
         
-        let viewMatrix = simd_float4x4(eye: eye, center: eye + centre, up: simd_float3(0,1,0))
-       
-        for i in 0..<Mesh!.no_instances{
-            let modelMatrix = (ptr + i).pointee.modelMatrix
-            let normalMatrix = create_normalMatrix(modelViewMatrix: viewMatrix * modelMatrix)
+        scene?.cameraHasBeenUpdated()
             
-            (ptr + i).pointee.normalMatrix = normalMatrix
-            (ptr + i).pointee.viewMatrix = viewMatrix
-            //print(current_ptr.modelMatrix)
         }
-//        forward = normalize(-centre)
-//        across = normalize(cross(up, forward))
-//        up = cross(forward, across)
         
+        
+      
      
        
-    }
+    
 }

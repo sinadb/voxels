@@ -108,38 +108,93 @@ class ViewController: NSViewController {
     func myKeyDownEvent(event: NSEvent) -> NSEvent
     {
         switch event.keyCode {
-        case Keycode.w:
-            for camera in renderer.cameraLists{
-                camera.update_eye(with: simd_float3(0,1,0))
+        case Keycode.l:
+            if(renderer.shadowScene!.renderDepth ){
+                renderer.shadowScene?.renderDepth = false
             }
-            
-            break
-        case Keycode.s:
-            for camera in renderer.cameraLists{
-                camera.update_eye(with: simd_float3(0,-1,0))
-            }
-            break
-        case Keycode.a:
-            for camera in renderer.cameraLists{
-                camera.update_eye(with: simd_float3(-1,0,0))
-            }
-            break
-        case Keycode.d:
-            for camera in renderer.cameraLists{
-                camera.update_eye(with: simd_float3(1,0,0))
-            }
-            break
-        case Keycode.q:
-            for camera in renderer.cameraLists{
-                camera.update_eye(with: simd_float3(0,0,1))
-            }
-            break
-        case Keycode.e:
-            for camera in renderer.cameraLists{
-                camera.update_eye(with: simd_float3(0,0,-1))
+            else{
+                renderer.shadowScene?.renderDepth = true
             }
             break
         case Keycode.space:
+            if(renderer.adjustSceneCamera){
+                renderer.adjustSceneCamera = false
+            }
+            else {
+                renderer.adjustSceneCamera = true
+            }
+            break
+        case Keycode.w:
+            if(renderer.adjustSceneCamera){
+                for camera in renderer.cameraLists{
+                    camera.update_eye(with: simd_float3(0,1,0))
+                }
+            }
+            else {
+                for camera in renderer.lightCameraLists {
+                    camera.update_eye(with: simd_float3(0,1,0))
+                }
+            }
+            break
+        case Keycode.s:
+            if(renderer.adjustSceneCamera){
+                for camera in renderer.cameraLists{
+                    camera.update_eye(with: simd_float3(0,-1,0))
+                }
+            }
+            else {
+                for camera in renderer.lightCameraLists {
+                    camera.update_eye(with: simd_float3(0,-1,0))
+                }
+            }
+            break
+        case Keycode.a:
+            if(renderer.adjustSceneCamera){
+                for camera in renderer.cameraLists{
+                    camera.update_eye(with: simd_float3(-1,0,0))
+                }
+            }
+            else {
+                for camera in renderer.lightCameraLists {
+                    camera.update_eye(with: simd_float3(-1,0,0))
+                }
+            }
+            break
+        case Keycode.d:
+            if(renderer.adjustSceneCamera){
+                for camera in renderer.cameraLists{
+                    camera.update_eye(with: simd_float3(1,0,0))
+                }
+            }
+            else {
+                for camera in renderer.lightCameraLists {
+                    camera.update_eye(with: simd_float3(1,0,0))
+                }
+            }
+            break
+        case Keycode.q:
+            if(renderer.adjustSceneCamera){
+                for camera in renderer.cameraLists{
+                    camera.update_eye(with: simd_float3(0,0,1))
+                }
+            }
+            else {
+                for camera in renderer.lightCameraLists {
+                    camera.update_eye(with: simd_float3(0,0,1))
+                }
+            }
+            break
+        case Keycode.e:
+            if(renderer.adjustSceneCamera){
+                for camera in renderer.cameraLists{
+                    camera.update_eye(with: simd_float3(0,0,-1))
+                }
+            }
+            else {
+                for camera in renderer.lightCameraLists {
+                    camera.update_eye(with: simd_float3(0,0,-1))
+                }
+            }
             break
         default:
             break

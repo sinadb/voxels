@@ -22,6 +22,7 @@
 		DA75DEB62954AE3300251E4C /* Renderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA75DEB52954AE3300251E4C /* Renderer.swift */; };
 		DA75DEBC2955A58B00251E4C /* Shaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = DA75DEBB2955A58B00251E4C /* Shaders.metal */; };
 		DA75DEBE2955AEAF00251E4C /* Maths.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA75DEBD2955AEAF00251E4C /* Maths.swift */; };
+		DA981A4129DB001500498CA0 /* Scene.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA981A4029DB001500498CA0 /* Scene.swift */; };
 		DA99E4542977098900249982 /* compute.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA99E4532977098900249982 /* compute.swift */; };
 		DAA3355429D353AC00B8A1C1 /* cobblestone_baseColor.png in Resources */ = {isa = PBXBuildFile; fileRef = DAA3354E29D353AC00B8A1C1 /* cobblestone_baseColor.png */; };
 		DAA3355629D353AC00B8A1C1 /* cobblestone_normal.png in Resources */ = {isa = PBXBuildFile; fileRef = DAA3355029D353AC00B8A1C1 /* cobblestone_normal.png */; };
@@ -73,6 +74,7 @@
 		DA75DEBA2954AF2C00251E4C /* ShaderDefinition.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ShaderDefinition.h; sourceTree = "<group>"; };
 		DA75DEBB2955A58B00251E4C /* Shaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Shaders.metal; sourceTree = "<group>"; };
 		DA75DEBD2955AEAF00251E4C /* Maths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Maths.swift; sourceTree = "<group>"; };
+		DA981A4029DB001500498CA0 /* Scene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scene.swift; sourceTree = "<group>"; };
 		DA99E4532977098900249982 /* compute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = compute.swift; sourceTree = "<group>"; };
 		DAA3354E29D353AC00B8A1C1 /* cobblestone_baseColor.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cobblestone_baseColor.png; sourceTree = "<group>"; };
 		DAA3355029D353AC00B8A1C1 /* cobblestone_normal.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cobblestone_normal.png; sourceTree = "<group>"; };
@@ -146,6 +148,7 @@
 				DAA3354C29D353AC00B8A1C1 /* Alley */,
 				DA3293E529D2176900C5B842 /* Models */,
 				DA21FF3D29CB9F8B00F5C549 /* Camera.swift */,
+				DA981A4029DB001500498CA0 /* Scene.swift */,
 				DA75DEBB2955A58B00251E4C /* Shaders.metal */,
 				DAA6AAF029BBC16700BF03E3 /* constants.swift */,
 				DA1EB18329B388ED00942766 /* Helper.swift */,
@@ -346,6 +349,7 @@
 			files = (
 				DA75DEBC2955A58B00251E4C /* Shaders.metal in Sources */,
 				DA1EB18429B388ED00942766 /* Helper.swift in Sources */,
+				DA981A4129DB001500498CA0 /* Scene.swift in Sources */,
 				DA75DE8D2954AE1500251E4C /* ViewController.swift in Sources */,
 				DA75DEB62954AE3300251E4C /* Renderer.swift in Sources */,
 				DA99E4542977098900249982 /* compute.swift in Sources */,

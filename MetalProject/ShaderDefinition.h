@@ -31,14 +31,19 @@ struct Transforms {
 
 struct InstanceConstants {
     simd_float4x4 modelMatrix;
-    simd_float4x4 viewMatrix;
     simd_float4x4 normalMatrix;
 };
 
 struct FrameConstants {
+    simd_float4x4 viewMatrix;
     simd_float4x4 projectionMatrix;
 };
 
+
+struct lightConstants {
+    simd_float4x4 lightViewMatirx;
+    simd_float4x4 lightProjectionMatrix;
+};
 
 
 
