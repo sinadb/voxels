@@ -225,6 +225,7 @@ class DefaultScene {
     }
     
     func addDrawable(mesh : Mesh){
+        mesh.init_instance_buffers(with: sceneCamera.cameraMatrix)
         if(!(mesh.has_flat)){
             defaultMeshes.append(mesh)
         }

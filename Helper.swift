@@ -160,6 +160,7 @@ class Mesh{
     
     
     var instanceConstantData = [InstanceConstants]()
+    var instanceModelMatrixData = [simd_float4x4]()
     var instanceColourData = [simd_float4]()
 
     
@@ -554,20 +555,25 @@ class Mesh{
     
     
     
-    func createInstance(with modelMatrix : simd_float4x4 , and colour : simd_float4, with camera : Camera){
+    func createInstance(with modelMatrix : simd_float4x4 , and colour : simd_float4? = nil){
       
      
         no_instances += 1
         
       
-        let normalMatrix = create_normalMatrix(modelViewMatrix: camera.cameraMatrix * modelMatrix)
+//        let normalMatrix = create_normalMatrix(modelViewMatrix: camera.cameraMatrix * modelMatrix)
+//
+//        let instanceData = InstanceConstants(modelMatrix: modelMatrix, normalMatrix: normalMatrix)
+//
+//        instanceConstantData.append(instanceData)
         
-        let instanceData = InstanceConstants(modelMatrix: modelMatrix, normalMatrix: normalMatrix)
-        
-        instanceConstantData.append(instanceData)
+        instanceModelMatrixData.append(modelMatrix)
             
       
-        instanceColourData.append(colour)
+        if let colour = colour{
+            instanceColourData.append(colour)
+        }
+       
         
        
     }
@@ -587,9 +593,18 @@ class Mesh{
         
     }
     
-    func init_instance_buffers(){
-        instanceColourBuffer = device.makeBuffer(bytes: &instanceColourData, length: MemoryLayout<simd_float4>.stride*instanceColourData.count, options: [])
+    func init_instance_buffers(with viewMatrix : simd_float4x4){
+        if(!(instanceColourData.isEmpty)){
+            instanceColourBuffer = device.makeBuffer(bytes: &instanceColourData, length: MemoryLayout<simd_float4>.stride*instanceColourData.count, options: [])
+        }
         
+        
+        
+        for modelMatrix in instanceModelMatrixData {
+            let normalMatrix = create_normalMatrix(modelViewMatrix: viewMatrix * modelMatrix)
+            let instanceData = InstanceConstants(modelMatrix: modelMatrix, normalMatrix: normalMatrix)
+            instanceConstantData.append(instanceData)
+        }
         
         instaceConstantBuffer = device.makeBuffer(bytes: &instanceConstantData , length: MemoryLayout<InstanceConstants>.stride*instanceConstantData.count, options: [])
         
@@ -598,10 +613,16 @@ class Mesh{
         
         let instanceBuffer = UniformBuffer(buffer: instaceConstantBuffer!, index: vertexBufferIDs.instanceConstant)
         
-        let colourBuffer = UniformBuffer(buffer: instanceColourBuffer!, index: vertexBufferIDs.colour)
-        
         BufferArray.insert(instanceBuffer, at: 0)
-        BufferArray.append(colourBuffer)
+        
+        if let instanceColourBuffer = instanceColourBuffer{
+            let colourBuffer = UniformBuffer(buffer: instanceColourBuffer, index: vertexBufferIDs.colour)
+            BufferArray.append(colourBuffer)
+        }
+       
+        
+      
+       
       
     }
     

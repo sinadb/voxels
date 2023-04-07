@@ -657,8 +657,8 @@ class Renderer : NSObject, MTKViewDelegate {
        
         let houseMesh = Mesh(device: device, Mesh: cubeMDLMesh)
         let houseModelMatrix = create_modelMatrix(translation: simd_float3(0,0,-10), rotation: simd_float3(0), scale: simd_float3(8))
-        houseMesh?.createInstance(with: houseModelMatrix, and: simd_float4(1,0,0,1), with: testCamera)
-        houseMesh?.init_instance_buffers()
+        houseMesh?.createInstance(with: houseModelMatrix)
+        //houseMesh?.init_instance_buffers()
         houseMesh?.add_textures(texture: BrickWallTexture)
         houseMesh?.add_textures(texture: BrickWallTextureN)
         houseMesh?.setCullModeForMesh(side: .back)
@@ -683,13 +683,13 @@ class Renderer : NSObject, MTKViewDelegate {
 
 
 
-            spheresMesh?.createInstance(with: modelMatrix, and: simd_float4(c_r,c_g,c_b,1),with:testCamera)
+            spheresMesh?.createInstance(with: modelMatrix, and: simd_float4(c_r,c_g,c_b,1))
 
 
         }
         
         
-        spheresMesh?.init_instance_buffers()
+        //spheresMesh?.init_instance_buffers()
  
         testScene = DefaultScene(device: device, projectionMatrix: projectionMatrix, attachTo: testCamera)
         testScene.addDrawable(mesh: spheresMesh!)
