@@ -198,6 +198,12 @@ class Mesh{
             
             mdlMeshVD.attributes[4] = MDLVertexAttribute(name: MDLVertexAttributeBitangent, format: .float4, offset: 52, bufferIndex: 0)
             mdlMeshVD.layouts[0] = MDLVertexBufferLayout(stride: 68)
+            
+            Mesh.addTangentBasis(
+              forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate,
+              normalAttributeNamed: MDLVertexAttributeNormal,
+              tangentAttributeNamed: MDLVertexAttributeTangent)
+            
             Mesh.vertexDescriptor = mdlMeshVD
             try self.Mesh = MTKMesh(mesh: Mesh, device: device)
             print("\(label) Mesh created")
@@ -540,6 +546,9 @@ class Mesh{
         if(texture.index == textureIDs.flat){
             has_flat = true
         }
+        else if(texture.index == textureIDs.Normal){
+            has_normal = true
+        }
     }
     
     
@@ -834,6 +843,7 @@ class pipeLine {
                     pipelineDescriptor.tessellationFactorStepFunction = .constant
                     pipelineDescriptor.tessellationOutputWindingOrder = .counterClockwise
                     pipelineDescriptor.tessellationControlPointIndexType = .uint16
+            pipelineDescriptor.maxTessellationFactor = 64
             
         }
         

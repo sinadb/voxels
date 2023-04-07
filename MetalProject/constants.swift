@@ -24,6 +24,7 @@ struct vertexBufferIDs {
     static let frameConstant = 2
     static let colour = 3
     static let lightConstant = 4
+    static let lightWorldPos = 5
 }
 
 struct textureIDs {

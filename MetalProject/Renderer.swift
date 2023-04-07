@@ -529,7 +529,7 @@ class Renderer : NSObject, MTKViewDelegate {
     var wallIndexBuffer : MTLBuffer?
   
     
-    var performanceTestMesh : Mesh?
+    var spheresMesh : Mesh?
     var frameConstant : FrameConstants
     var testCamera : Camera
     var initialState = [[simd_float3]]()
@@ -548,10 +548,7 @@ class Renderer : NSObject, MTKViewDelegate {
     
     
     
-    var displacementpipeline : pipeLine?
-    var wallMeshDisplace : Mesh
-    var wallFrameConst : FrameConstants
-    
+  
     
     init?(mtkView: MTKView){
       
@@ -584,11 +581,23 @@ class Renderer : NSObject, MTKViewDelegate {
         
         let textureLoader = MTKTextureLoader(device: device)
        
-        let BrickWall = try! textureLoader.newTexture(name: "BrickWallD", scaleFactor: 1.0, bundle: nil)
+        let BrickWall = try! textureLoader.newTexture(name: "BrickWallD", scaleFactor: 1.0, bundle: nil, options: flatTextureLoaderOptions)
             
       
         let BrickWallTexture = Texture(texture: BrickWall, index: textureIDs.flat)
         
+        let flatTextureLoaderOptionsN : [MTKTextureLoader.Option : Any] = [
+            .textureUsage : MTLTextureUsage.shaderRead.rawValue,
+            .textureStorageMode : MTLStorageMode.private.rawValue,
+            .origin : MTKTextureLoader.Origin.bottomLeft.rawValue,
+            .SRGB : False
+           
+                
+        ]
+        
+        let BrickWallN = try! textureLoader.newTexture(name: "BrickWallN", scaleFactor: 1.0, bundle: nil, options: flatTextureLoaderOptionsN)
+        
+        let BrickWallTextureN = Texture(texture: BrickWallN, index: textureIDs.Normal)
       
         // render a simple cube with colour pipeline
       
@@ -597,7 +606,7 @@ class Renderer : NSObject, MTKViewDelegate {
         
         let allocator = MTKMeshBufferAllocator(device: device)
         let planeMDLMesh = MDLMesh(planeWithExtent: simd_float3(1,1,1), segments: simd_uint2(1,1), geometryType: .triangles, allocator: allocator)
-        let cubeMDLMesh = MDLMesh(boxWithExtent: simd_float3(1,1,1), segments: simd_uint3(1,1,1), inwardNormals: false, geometryType: .triangles, allocator: allocator)
+        let cubeMDLMesh = MDLMesh(boxWithExtent: simd_float3(1,1,1), segments: simd_uint3(1,1,1), inwardNormals: true, geometryType: .triangles, allocator: allocator)
         let circleMDLMesh = MDLMesh(sphereWithExtent: simd_float3(1,1,1), segments: simd_uint2(100,100), inwardNormals: False, geometryType: .triangles, allocator: allocator)
         let coneMDLMesh = MDLMesh(coneWithExtent: simd_float3(1,1,1), segments: simd_uint2(100,100), inwardNormals: False, cap: False, geometryType: .triangles, allocator: allocator)
        
@@ -634,12 +643,12 @@ class Renderer : NSObject, MTKViewDelegate {
         
         
      
-        testCamera = Camera(for: mtkView, eye: simd_float3(0), centre: simd_float3(0,0,-1))
+        testCamera = Camera(for: mtkView, eye: simd_float3(0,0,0), centre: simd_float3(0,0,-1))
         
         cameraLists.append(testCamera)
      
         
-        performanceTestMesh = Mesh(device: device, Mesh: circleMDLMesh ,with: "Circle Mesh")
+        spheresMesh = Mesh(device: device, Mesh: circleMDLMesh ,with: "Circle Mesh")
         
         
         let projectionMatrix = simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2.0, near: 1.0, far: 100)
@@ -651,12 +660,13 @@ class Renderer : NSObject, MTKViewDelegate {
         houseMesh?.createInstance(with: houseModelMatrix, and: simd_float4(1,0,0,1), with: testCamera)
         houseMesh?.init_instance_buffers()
         houseMesh?.add_textures(texture: BrickWallTexture)
-        houseMesh?.setCullModeForMesh(side: .front)
+        houseMesh?.add_textures(texture: BrickWallTextureN)
+        houseMesh?.setCullModeForMesh(side: .back)
        
         
    
        
-        for _ in 0..<10{
+        for _ in 0..<100{
             let x_r = Float.random(in: -2...(2))
             let y_r = Float.random(in: -2...(2))
             let z_r = Float.random(in: -10...(-5))
@@ -673,26 +683,27 @@ class Renderer : NSObject, MTKViewDelegate {
 
 
 
-            performanceTestMesh?.createInstance(with: modelMatrix, and: simd_float4(c_r,c_g,c_b,1),with:testCamera)
+            spheresMesh?.createInstance(with: modelMatrix, and: simd_float4(c_r,c_g,c_b,1),with:testCamera)
 
 
         }
         
         
-        performanceTestMesh?.init_instance_buffers()
+        spheresMesh?.init_instance_buffers()
  
         testScene = DefaultScene(device: device, projectionMatrix: projectionMatrix, attachTo: testCamera)
-        testScene.addDrawable(mesh: performanceTestMesh!)
+        testScene.addDrawable(mesh: spheresMesh!)
+        testScene.setPointLight(at: simd_float4(0,0,-10,1))
         testScene.addDrawable(mesh: houseMesh!)
+        print(testScene.normalMappedMesh.count)
         
-        
-        var lightCamera = Camera(for: mtkView, eye: simd_float3(10,0,-10), centre: simd_float3(-1,0,0))
-        var bounds = simd_float3(-10,-10,20)
-        shadowScene = shadowMapScene(device: device, projectionMatrix: projectionMatrix, attachTo: testCamera, with: bounds, from: lightCamera)
-        shadowScene?.addDrawable(mesh: performanceTestMesh!)
-        shadowScene?.addDrawable(mesh: houseMesh!)
-        lightCameraLists.append(lightCamera)
-       
+//        var lightCamera = Camera(for: mtkView, eye: simd_float3(10,0,-10), centre: simd_float3(-1,0,0))
+//        var bounds = simd_float3(-10,-10,20)
+//        shadowScene = shadowMapScene(device: device, projectionMatrix: projectionMatrix, attachTo: testCamera, with: bounds, from: lightCamera)
+//        shadowScene?.addDrawable(mesh: performanceTestMesh!)
+//        shadowScene?.addDrawable(mesh: houseMesh!)
+//        lightCameraLists.append(lightCamera)
+//
         
 //        shadowScene = shadowMapScene(device: device, projectionMatrix: projectionMatrix, attachTo: testCamera, with: CGRect(origin: CGPoint(x: -5, y: -5), size: CGSize(width: 10, height: 10)), direction: simd_float3(0,0,-1))
 //        shadowScene?.addDrawable(mesh: performanceTestMesh!)
@@ -715,46 +726,46 @@ class Renderer : NSObject, MTKViewDelegate {
 //        testShadowMapValueScene.addDrawable(mesh: plane)
 //
 //        print(ortho * testCamera.cameraMatrix * simd_float4(0,0,-1,1))
-        let VD = generalVertexDescriptor()
-        displacementpipeline = createPipelineForDisplacementMapping(device: device, vertexDescriptor: VD)
-        wallMeshDisplace = Mesh(device: device, vertices: wallVB, indices: wallIB, with: 10)!
-        do {
-            let flatTextureLoaderOptions : [MTKTextureLoader.Option : Any] = [
-                .textureUsage : MTLTextureUsage.shaderRead.rawValue,
-                .textureStorageMode : MTLStorageMode.private.rawValue,
-                .origin : MTKTextureLoader.Origin.bottomLeft.rawValue,
-               
-                    
-            ]
-            let wallD = try textureLoader.newTexture(name: "BrickWallD", scaleFactor: 1.0, bundle: nil, options: flatTextureLoaderOptions)
-            
-            let wallH = try textureLoader.newTexture(name: "BrickWallH", scaleFactor: 1.0, bundle: nil, options: flatTextureLoaderOptions)
-            
-            let normalflatTextureLoaderOptions : [MTKTextureLoader.Option : Any] = [
-                .textureUsage : MTLTextureUsage.shaderRead.rawValue,
-                .textureStorageMode : MTLStorageMode.private.rawValue,
-                .origin : MTKTextureLoader.Origin.bottomLeft.rawValue,
-                .SRGB : False
-                    
-            ]
-            
-            let wallN = try textureLoader.newTexture(name: "BrickWallN", scaleFactor: 1.0, bundle: nil, options: normalflatTextureLoaderOptions)
-           
-            wallMeshDisplace.add_textures(texture: Texture(texture: wallD, index: textureIDs.flat))
-            wallMeshDisplace.add_textures(texture: Texture(texture: wallN, index: textureIDs.Normal))
-            wallMeshDisplace.add_textures(texture: Texture(texture: wallH, index: textureIDs.Displacement))
-        }
-        
-        catch{
-            print("Textures not loaded")
-            return nil
-        }
-        
-        
-        var wallModelMatrix = create_modelMatrix(translation: simd_float3(0,0,-3), rotation: simd_float3(-45,0,0), scale: simd_float3(1))
-        wallMeshDisplace.createInstance(with: wallModelMatrix, and: simd_float4(0), with: testCamera)
-        wallMeshDisplace.init_instance_buffers()
-        wallFrameConst = FrameConstants(viewMatrix: testCamera.cameraMatrix, projectionMatrix: projectionMatrix)
+//        let VD = generalVertexDescriptor()
+//        displacementpipeline = createPipelineForDisplacementMapping(device: device, vertexDescriptor: VD)
+//        wallMeshDisplace = Mesh(device: device, vertices: wallVB, indices: wallIB, with: 64)!
+//        do {
+//            let flatTextureLoaderOptions : [MTKTextureLoader.Option : Any] = [
+//                .textureUsage : MTLTextureUsage.shaderRead.rawValue,
+//                .textureStorageMode : MTLStorageMode.private.rawValue,
+//                .origin : MTKTextureLoader.Origin.bottomLeft.rawValue,
+//
+//
+//            ]
+//            let wallD = try textureLoader.newTexture(name: "BrickWallD", scaleFactor: 1.0, bundle: nil, options: flatTextureLoaderOptions)
+//
+//            let wallH = try textureLoader.newTexture(name: "BrickWallH", scaleFactor: 1.0, bundle: nil, options: flatTextureLoaderOptions)
+//
+//            let normalflatTextureLoaderOptions : [MTKTextureLoader.Option : Any] = [
+//                .textureUsage : MTLTextureUsage.shaderRead.rawValue,
+//                .textureStorageMode : MTLStorageMode.private.rawValue,
+//                .origin : MTKTextureLoader.Origin.bottomLeft.rawValue,
+//                .SRGB : False
+//
+//            ]
+//
+//            let wallN = try textureLoader.newTexture(name: "BrickWallN", scaleFactor: 1.0, bundle: nil, options: normalflatTextureLoaderOptions)
+//
+//            wallMeshDisplace.add_textures(texture: Texture(texture: wallD, index: textureIDs.flat))
+//            wallMeshDisplace.add_textures(texture: Texture(texture: wallN, index: textureIDs.Normal))
+//            wallMeshDisplace.add_textures(texture: Texture(texture: wallH, index: textureIDs.Displacement))
+//        }
+//
+//        catch{
+//            print("Textures not loaded")
+//            return nil
+//        }
+//
+//
+//        var wallModelMatrix = create_modelMatrix(translation: simd_float3(0,0,-5), rotation: simd_float3(-90,0,0), scale: simd_float3(3))
+//        wallMeshDisplace.createInstance(with: wallModelMatrix, and: simd_float4(0), with: testCamera)
+//        wallMeshDisplace.init_instance_buffers()
+//        wallFrameConst = FrameConstants(viewMatrix: testCamera.cameraMatrix, projectionMatrix: projectionMatrix)
         
 
     }
@@ -772,25 +783,10 @@ class Renderer : NSObject, MTKViewDelegate {
   
      
         guard let commandBuffer = commandQueue.makeCommandBuffer() else {return}
-        guard let renderPassDescriptor = view.currentRenderPassDescriptor else {return}
-        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
-        renderPassDescriptor.depthAttachment.clearDepth = 1
-        renderPassDescriptor.depthAttachment.loadAction = .clear
-
-        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {return}
-        renderEncoder.setRenderPipelineState(displacementpipeline!.m_pipeLine)
-        renderEncoder.setVertexSamplerState(sampler, index: 0)
-        renderEncoder.setFragmentSamplerState(sampler, index: 0)
-        var lightPos = simd_float4(0,0,0,1)
-        renderEncoder.setVertexBytes(&lightPos, length: MemoryLayout<simd_float4>.stride, index: 10)
-        renderEncoder.setVertexBytes(&wallFrameConst, length: MemoryLayout<FrameConstants>.stride, index: vertexBufferIDs.frameConstant)
-        
-        wallMeshDisplace.drawTesselated(renderEncoder: renderEncoder)
-        renderEncoder.endEncoding()
+       
+        testScene.drawScene(with: commandBuffer, in: view)
         
         
-//        guard let commandBuffer = commandQueue.makeCommandBuffer() else {return}
-//        shadowScene?.shadowPass(with: commandBuffer, in: view)
         commandBuffer.present(view.currentDrawable!)
         commandBuffer.commit()
        

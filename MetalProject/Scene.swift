@@ -58,6 +58,27 @@ func createPipelineForDisplacementMapping(device : MTLDevice, vertexDescriptor :
     return pipeLine(device, "post_tesselation_tri", "simple_shader_fragment", vertexDescriptor, tempFC.functionConstant, tesselation: true)!
 }
 
+
+func createPipelineForNormalMappedMesh(device : MTLDevice, vertexDescriptor : MTLVertexDescriptor) -> pipeLine {
+    
+    var False = false
+    var True = true
+    let tempFC = functionConstant()
+    
+    
+    tempFC.setValue(type: .bool, value: &False, at: FunctionConstantValues.cube)
+    tempFC.setValue(type: .bool, value: &True, at: FunctionConstantValues.flat)
+    tempFC.setValue(type: .bool, value: &False, at: FunctionConstantValues.constant_colour)
+    tempFC.setValue(type: .bool, value: &False, at: FunctionConstantValues.is_skyBox)
+    tempFC.setValue(type: .bool, value: &True, at: FunctionConstantValues.has_normalMap)
+    tempFC.setValue(type: .bool, value: &False, at: FunctionConstantValues.has_displacementMap)
+    tempFC.setValue(type: .bool, value: &False, at: FunctionConstantValues.shadow_map)
+    
+    return pipeLine(device, "simple_shader_vertex", "simple_shader_fragment", vertexDescriptor, tempFC.functionConstant)!
+    
+    
+}
+
 func createPipelineForFlatTexturedMesh(device : MTLDevice, vertexDescriptor : MTLVertexDescriptor) -> pipeLine {
     
     var False = false
@@ -131,7 +152,7 @@ func createPipelineForShadowsWithFlatTexture(device : MTLDevice, vertexDescripto
 
 class DefaultScene {
     
-    
+    var pointLightPos : simd_float4?
     var defaultPipeline : pipeLine
     var flatTexturedMeshPipeline : pipeLine
     var renderShadowPipeline : pipeLine
@@ -150,10 +171,12 @@ class DefaultScene {
     
     var defaultMeshes = [Mesh]()
     var flatTexturedMeshed = [Mesh]()
+    var normalMappedMesh = [Mesh]()
     var renderDepth = false
     
     var shadowAndConstantColourPipeline : pipeLine
     var shadowAndFlatTexturePipeline : pipeLine
+    var normalMappedPipeline : pipeLine
     
     init(device : MTLDevice, projectionMatrix : simd_float4x4, attachTo camera : Camera) {
         var False = false
@@ -195,6 +218,7 @@ class DefaultScene {
         
         shadowAndFlatTexturePipeline = createPipelineForShadowsWithFlatTexture(device: device, vertexDescriptor: defaultVertexDescriptor)
         shadowAndConstantColourPipeline = createPipelineForShadowsWithColour(device: device, vertexDescriptor: defaultVertexDescriptor)
+        normalMappedPipeline = createPipelineForNormalMappedMesh(device: device, vertexDescriptor: defaultVertexDescriptor)
         
         camera.scene = self
         
@@ -203,6 +227,10 @@ class DefaultScene {
     func addDrawable(mesh : Mesh){
         if(!(mesh.has_flat)){
             defaultMeshes.append(mesh)
+        }
+        else if(mesh.has_normal){
+            print("has normal")
+            normalMappedMesh.append(mesh)
         }
         else {
             flatTexturedMeshed.append(mesh)
@@ -327,6 +355,7 @@ class DefaultScene {
        
         renderEncoder.setRenderPipelineState(defaultPipeline.m_pipeLine)
         
+        renderEncoder.setVertexBytes(&(pointLightPos!), length: 16, index: vertexBufferIDs.lightWorldPos)
         sceneConstant.viewMatrix = sceneCamera.cameraMatrix
         
         renderEncoder.setVertexBytes(&sceneConstant, length: MemoryLayout<FrameConstants>.stride, index: vertexBufferIDs.frameConstant)
@@ -343,10 +372,20 @@ class DefaultScene {
         for mesh in flatTexturedMeshed {
             mesh.draw(renderEncoder: renderEncoder, with: 1)
         }
+        renderEncoder.setRenderPipelineState(normalMappedPipeline.m_pipeLine)
+        for mesh in normalMappedMesh{
+           
+            mesh.draw(renderEncoder: renderEncoder, with: 1)
+        }
         
 
         renderEncoder.endEncoding()
     }
+    
+    func setPointLight(at position : simd_float4){
+        pointLightPos = position
+    }
+    
 }
 
 

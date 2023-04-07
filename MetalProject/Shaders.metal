@@ -23,6 +23,7 @@ enum class vertexBufferIDs : int {
     frameConstantsBuffer = 2,
     colour = 3,
     lightConstantBuffer = 4,
+    lightWorldPos = 5,
     
     
 };
@@ -235,6 +236,7 @@ vertex VertexOut simple_shader_vertex(VertexIn in [[stage_in]],
                                       constant InstanceConstants* Transforms [[buffer(vertexBufferIDs::instanceConstantsBuffer)]],
                                       constant FrameConstants& SceneConstants [[buffer(vertexBufferIDs::frameConstantsBuffer)]],
                                       constant simd_float4* colour_out [[buffer(vertexBufferIDs::colour)]],
+                                      constant simd_float4& light_pos [[buffer(vertexBufferIDs::lightWorldPos)]],
                                       uint index [[instance_id]]
                             ){
     VertexOut out;
@@ -251,9 +253,11 @@ vertex VertexOut simple_shader_vertex(VertexIn in [[stage_in]],
     simd_float4 normal = simd_float4(in.normal.xyz,0);
     out.world_normal = normalize((modelMatrix*normal).xyz);
     out.eye_normal = normalize((normalMatrix*in.normal).xyz);
+    out.tangent = normalize((normalMatrix*in.tangent).xyz);
     out.tex_3 = normalize(in.pos.xyz);
     out.tex = in.tex;
     out.pos = projectionMatrix * modelViewMatrix * in.pos;
+    out.viewLightPos = (viewMatrix * light_pos).xyz;
     
 //    if(is_sky_box){
 //        simd_float4x4 camera = simd_float4x4(current_transform.Camera[0],current_transform.Camera[1],current_transform.Camera[2],simd_float4(0,0,0,1));
@@ -305,30 +309,27 @@ fragment float4 simple_shader_fragment(VertexOut in [[stage_in]],
                                        sampler textureSampler [[sampler(0)]],
                                        constant bool& renderDepth [[buffer(15)]]
                                        ){
+    
+    float ambientFactor = 0.1;
   
     if(has_normal_map){
         simd_float3 L = normalize(in.viewLightPos - in.eye_pos);
         simd_float3 V = normalize(- in.eye_pos);
         float specularExponent = 150;
         simd_float3 H = normalize(L+V);
-       
-
-        //light_vector = simd_float3(1,0,0);
-
         simd_float4 outcolour = flatMap.sample(textureSampler, in.tex);
-        simd_float3 tangent = normalize(in.tangent - dot(in.tangent, in.eye_pos) * in.eye_normal);
+        simd_float3 tangent = normalize(in.tangent - dot(in.tangent, in.eye_normal) * in.eye_normal);
         simd_float3 bitangent = normalize(cross(in.eye_normal, tangent));
         simd_float3x3 TBN = simd_float3x3(normalize(tangent),bitangent,normalize(in.eye_normal));
         float3 normal = (normalMap.sample(textureSampler, in.tex)).rgb;
         normal = (normal * 2.0 - 1.0);
-        //normal.xy *= 3.0;
+        normal.xy *= 1.0;
         normal = normalize(normal);
         //normal = normalize(simd_float3(0.3,0,1));
         normal = normalize(TBN * normal);
         float diffuseFactor = saturate(dot(L,normal));
-        float specularFactor = powr(saturate(dot(normal, H)), 150.0) * 50;
-        //return float4(specularFactor,0,0,1);
-        return (diffuseFactor+specularFactor)*outcolour;
+        float specularFactor = powr(saturate(dot(normal, H)), 150.0) * 5;
+        return (diffuseFactor+specularFactor+ambientFactor)*outcolour;
     }
         
     
@@ -342,7 +343,6 @@ fragment float4 simple_shader_fragment(VertexOut in [[stage_in]],
                 simd_float4 fragmentLightPos = lightProjectionViewMatrix * simd_float4(in.world_pos,1);
                 simd_float2 fragment_tex = fragmentLightPos.xy * 0.5 + 0.5;
                 float depthValue = depthMap.sample(shadowSampler, fragment_tex);
-               // return float4(depthValue,depthValue,depthValue,1);
         
         
         float shadowCoverage = shadow(in.world_pos, depthMap, lightProjectionViewMatrix);
@@ -367,7 +367,14 @@ fragment float4 simple_shader_fragment(VertexOut in [[stage_in]],
         return flatMap.sample(textureSampler, in.tex);
     }
     else {
-        return in.colour;
+        simd_float3 L = normalize(in.viewLightPos - in.eye_pos);
+        simd_float3 V = normalize(- in.eye_pos);
+        simd_float3 H = normalize(L + V);
+        float specularExponent = 150;
+        float diffuseFactor = saturate(dot(L,in.eye_normal));
+        float specularFactor = powr(saturate(dot(in.eye_normal, H)), specularExponent) * 5;
+        simd_float3 finalColour = (diffuseFactor + specularFactor + ambientFactor)*in.colour.xyz;
+        return float4(finalColour,1);
     }
     
     
@@ -514,7 +521,7 @@ vertex VertexOut post_tesselation_tri(
                                       float3 positionInPatch [[position_in_patch]],
                                       texture2d<float> displacement [[texture(textureIDs::Displacement),function_constant(has_displacement_map)]],
                                       sampler textureSampler [[sampler(0),function_constant(has_displacement_map)]],
-                                      constant simd_float4& light_pos [[buffer(10)]]
+                                      constant simd_float4& light_pos [[buffer(vertexBufferIDs::lightWorldPos)]]
                                       ){
                                           VertexOut out;
                                           
