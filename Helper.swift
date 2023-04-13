@@ -140,7 +140,8 @@ class Mesh{
     
     let device : MTLDevice
     var Mesh : MTKMesh?
-    
+    var is_shadow_caster : Bool?
+    var futureModelMatrices = [simd_float4x4]()
     var MeshCamera : Camera?
     
     
@@ -169,7 +170,7 @@ class Mesh{
     
   
    
-    var no_instances = 0
+    var no_instances : Int = 0
     
     
     
@@ -529,12 +530,12 @@ class Mesh{
     
 
     
-    func rotateMesh(with newModelMatrix : [simd_float4x4]){
+    func rotateMesh(with newModelMatrix : [simd_float4x4], and viewMatrix : simd_float4x4){
         var ptr = BufferArray[0].buffer.contents().bindMemory(to: InstanceConstants.self, capacity: no_instances)
        
         
         for i in 0..<no_instances{
-            let normalMatrix = create_normalMatrix(modelViewMatrix: MeshCamera!.cameraMatrix * newModelMatrix[i])
+            let normalMatrix = create_normalMatrix(modelViewMatrix: viewMatrix * newModelMatrix[i])
             
             (ptr + i).pointee.normalMatrix = normalMatrix
             (ptr + i).pointee.modelMatrix = newModelMatrix[i]
@@ -677,17 +678,22 @@ class Mesh{
 //
 //    }
 //
-    func draw(renderEncoder : MTLRenderCommandEncoder, with instances : Int, culling : MTLCullMode? = nil){
+    func draw(renderEncoder : MTLRenderCommandEncoder, with instances : Int? = nil, culling : MTLCullMode? = nil){
         
         if(cullFace != nil){
+           
             renderEncoder.setCullMode(cullFace!)
         }
+        
         else {
+            
             renderEncoder.setCullMode(.back)
         }
+        
         if let cullMode = culling {
             renderEncoder.setCullMode(cullMode)
         }
+        
         for buffer in BufferArray {
             if let function = buffer.functionType {
                 if(function == .fragment){
@@ -705,14 +711,16 @@ class Mesh{
             renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
             for i in 0..<indexBufferArray.count{
                 let submesh = Mesh!.submeshes[i]
-                renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: indexBufferArray[i], indexBufferOffset: submesh.indexBuffer.offset, instanceCount: no_instances)
+                let count = instances ?? no_instances
+                renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: submesh.indexCount, indexType: submesh.indexType, indexBuffer: indexBufferArray[i], indexBufferOffset: submesh.indexBuffer.offset, instanceCount: count)
             }
            
             return
         }
         else{
             renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: indexData!.count, indexType: .uint16, indexBuffer: indexBuffer!, indexBufferOffset: 0, instanceCount: no_instances)
+            let count = instances ?? no_instances
+            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: indexData!.count, indexType: .uint16, indexBuffer: indexBuffer!, indexBufferOffset: 0, instanceCount: count)
         }
     }
     func drawTesselated(renderEncoder : MTLRenderCommandEncoder){
@@ -825,12 +833,12 @@ class pipeLine {
             return nil
         }
     }
-    init?(_ device : MTLDevice, _ vertexFunctionName : String, _ fragmentFunctionName : String?, _ vertexDescriptor : MTLVertexDescriptor,  _ renderToCube : Bool){
+    init?(_ device : MTLDevice, _ vertexFunctionName : String, _ fragmentFunctionName : String?, _ vertexDescriptor : MTLVertexDescriptor,  _ renderToCube : Bool, colourPixelFormat : MTLPixelFormat = .bgra8Unorm_srgb, depthPixelFormat : MTLPixelFormat = .depth32Float){
         
         library = device.makeDefaultLibrary()!
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
-        pipelineDescriptor.colorAttachments[0].pixelFormat = .bgra8Unorm_srgb
-        pipelineDescriptor.depthAttachmentPixelFormat = .depth32Float
+        pipelineDescriptor.colorAttachments[0].pixelFormat = colourPixelFormat
+        pipelineDescriptor.depthAttachmentPixelFormat = depthPixelFormat
         pipelineDescriptor.vertexFunction = library.makeFunction(name: vertexFunctionName)
         if let fragmentAddress = fragmentFunctionName{
             pipelineDescriptor.fragmentFunction = library.makeFunction(name: fragmentAddress)

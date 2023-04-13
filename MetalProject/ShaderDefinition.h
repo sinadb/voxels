@@ -45,6 +45,12 @@ struct lightConstants {
     simd_float4x4 lightProjectionMatrix;
 };
 
+struct Lights {
+    simd_float3 direction;
+    simd_float3 position;
+    uint type;
+};
+
 
 
 

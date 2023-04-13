@@ -56,15 +56,22 @@ extension simd_float4x4{
                   simd_float4(tx,ty,tz,1)
                   )
         
-//        let X = simd_float4(2 / (right - left), 0, 0, 0)
-//        let Y = simd_float4(0, 2 / (top - bottom), 0, 0)
-//        let Z = simd_float4(0, 0, -2 / (far - near), 0)
-//        let W = simd_float4(
-//            (left + right) / (left - right),
-//            (top + bottom) / (bottom - top),
-//            (near + far) / (near - far),
-//            1)
-//        self.init(X,Y,Z,W)
+
+    }
+    init(orthoWithLeft left : Float, right : Float, bottom : Float, top : Float, near: Float, far: Float) {
+        
+        let sx = 2 / (right - left)
+        let sy = 2 / (top - bottom)
+        let sz = 1 / (near - far)
+        let tx = (left + right) / (left - right)
+        let ty = (top + bottom) / (bottom - top)
+        let tz = near / (near - far)
+        
+        self.init(simd_float4(sx,0,0,0),
+                  simd_float4(0,sy,0,0),
+                  simd_float4(0,0,sz,0),
+                  simd_float4(tx,ty,tz,1)
+        )
     }
     
     init(eye: simd_float3, center: simd_float3, up: simd_float3) {
@@ -117,9 +124,19 @@ func create_modelMatrix(translation : simd_float3, rotation : simd_float3, scale
     return translateMat*rotateMat*scaleMat
 }
 
+func create_modelMatrix(rotation : simd_float3, translation : simd_float3, scale : simd_float3) -> simd_float4x4 {
+    let translateMat = simd_float4x4(translate: translation)
+    let rotateMat = simd_float4x4(rotationXYZ: rotation)
+    let scaleMat = simd_float4x4(scale: scale)
+    
+    return rotateMat*translateMat*scaleMat
+}
+
 func create_modelViewMatrix(modelMatrix : simd_float4x4, viewMatrix : simd_float4x4) -> simd_float4x4 {
     return viewMatrix * modelMatrix
 }
+
+
 
 func create_normalMatrix(modelViewMatrix : simd_float4x4) -> simd_float4x4 {
     return (modelViewMatrix.inverse).transpose

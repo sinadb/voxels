@@ -35,8 +35,12 @@ class Camera {
         self.centre = centre
         width = 3024/2
         height = 1726/2
-      
-        cameraMatrix = simd_float4x4(eye: eye, center: eye + centre, up: simd_float3(0,1,0))
+        var up = simd_float3(0,1,0)
+        if(abs(dot(centre,up)) > 0.99){
+            print("Changing")
+            up = simd_float3(0,0,1)
+        }
+        cameraMatrix = simd_float4x4(eye: eye, center: eye + centre, up: up)
        
     }
     

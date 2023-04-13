@@ -24,7 +24,8 @@ struct vertexBufferIDs {
     static let frameConstant = 2
     static let colour = 3
     static let lightConstant = 4
-    static let lightWorldPos = 5
+    static let lightBuffer = 5
+    static let lightCount = 6
 }
 
 struct textureIDs {
@@ -51,6 +52,12 @@ struct FunctionConstantValues {
     static let has_displacementMap = 6
     static let shadow_map = 7
 }
+
+struct lightType  {
+    static let directional = 0
+    static let point = 1
+    static let omni = 2
+    };
 
 
 struct Keycode {
