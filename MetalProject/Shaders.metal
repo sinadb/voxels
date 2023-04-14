@@ -76,6 +76,7 @@ enum class textureIDs : int {
         struct VertexOut{
             
             float4 pos [[position]];
+            float pointSize [[point_size]];
             float4 colour;
             float3 world_normal;
             float3 eye_normal;
@@ -306,8 +307,8 @@ enum class textureIDs : int {
             
             constexpr sampler shadowSampler(coord::normalized,
                                             address::clamp_to_edge,
-                                            filter::nearest,
-                                            compare_func::less_equal);
+                                            filter::linear,
+                                            compare_func::less);
             simd_float4 shadowNDC = lightProjectionViewMatrix * simd_float4(worldPos,1);
             shadowNDC.xyz /= shadowNDC.w;
             simd_float2 shadowCoord = shadowNDC.xy * 0.5 + 0.5;
@@ -432,7 +433,7 @@ enum class textureIDs : int {
                 simd_float3x3 TBN = simd_float3x3(normalize(tangent),bitangent,normalize(in.eye_normal));
                 float3 normal = (NormalMap.sample(textureSampler, in.tex)).rgb;
                 normal = (normal * 2.0 - 1.0);
-                normal.xy *= 3.0;
+                normal.xy *= 1.0;
                 normal = normalize(normal);
                 //normal = normalize(simd_float3(0.3,0,1));
                 normal = normalize(TBN * normal);
@@ -440,7 +441,7 @@ enum class textureIDs : int {
                 
             }
             
-            float ambientFactor = 0.2;
+            float ambientFactor = 0.1;
             float finalLightFactor = ambientFactor;
             float specularExponent = 150;
             for (uint i = 0; i!= lightCount ; i++){
@@ -677,46 +678,39 @@ enum class textureIDs : int {
         };
         
         vertex VertexOutSlice test_shader_vertex(VertexIn in [[stage_in]],
-                                                 const device InstanceConstants* instancesTransform [[buffer(vertexBufferIDs::instanceConstantsBuffer)]],
-                                                 constant FrameConstants& frameTransform [[buffer(vertexBufferIDs::frameConstantsBuffer)]],
+                                                 ushort ampIndex [[amplification_id]],
                                                   uint index [[instance_id]]
                                                   )
         {
             VertexOutSlice out;
-            InstanceConstants current_transform = instancesTransform[index];
-            out.pos = frameTransform.projectionMatrix * frameTransform.viewMatrix * current_transform.modelMatrix * in.pos;
-            out.slice = index;
-            if(index == 0){
+            out.slice = 0;
+            out.pos = in.pos;
+            out.colour = float4(1);
+            if(ampIndex == 0){
                 out.colour = float4(1,0,0,1);
-             
+                   
             }
-            else if(index == 1){
+            if(ampIndex == 1){
                 out.colour = float4(0,1,0,1);
                 
             }
-            else {
+            if(ampIndex == 2){
                 out.colour = float4(0,0,1,1);
                
             }
-            //out.pos = in.pos;
             return out;
         }
         
         fragment float4 test_shader_fragment(VertexOutSlice in [[stage_in]]){
-            discard_fragment();
             return in.colour;
         }
         
         
         vertex VertexOut vertex_shader_sliced_rendering(VertexIn in [[stage_in]],
-                                                        const device InstanceConstants* instancesTransform [[buffer(vertexBufferIDs::instanceConstantsBuffer)]],
-                                                        constant FrameConstants& frameTransform [[buffer(vertexBufferIDs::frameConstantsBuffer)]],
-                                                        constant uint& index[[buffer(10)]]
+                                                      ushort index [[amplification_id]]
                                                       ){
             VertexOut out;
-            InstanceConstants current_transform = instancesTransform[index];
-            out.pos = frameTransform.projectionMatrix * frameTransform.viewMatrix * current_transform.modelMatrix * in.pos;
-            out.tex = in.tex;
+            out.pos = in.pos;
             return out;
         }
         fragment float4 fragment_shader_sliced_rendering(VertexOut in [[stage_in]],
@@ -727,5 +721,38 @@ enum class textureIDs : int {
             //return float4(0,1,0,1);
             return texture.sample(textureSampler, in.tex, index);
             
+        }
+        
+        vertex VertexOut test_amp_vertex(VertexIn in [[stage_in]],
+                                         ushort index [[amplification_id]],
+                                         constant simd_float4* offset [[buffer(10)]]
+                                         ){
+            VertexOut out;
+            out.pointSize = 10.0;
+            out.colour = simd_float4(1,0,0,1);
+            //out.pos = in.pos;
+            out.pos = in.pos + offset[index];
+            if(index == 0){
+               
+                out.colour = simd_float4(1,0,0,1);
+            }
+            if(index == 1){
+             
+                out.colour = simd_float4(0,1,0,1);
+              
+            }
+            if(index == 2){
+               
+                out.colour = simd_float4(0,0,1,1);
+            }
+            if(index == 3){
+                out.colour = simd_float4(0,1,1,1);
+            }
+            return out;
+            
+        }
+        
+        fragment float4 test_amp_fragment(VertexOut in [[stage_in]]){
+            return in.colour;
         }
        

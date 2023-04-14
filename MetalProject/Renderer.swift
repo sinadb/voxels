@@ -575,8 +575,12 @@ class Renderer : NSObject, MTKViewDelegate {
     var testShadowScene : shadowMapScene
     
     
-    //var testShadowMapValueScene : shadowMapScene
-    //var plane: Mesh
+    var testAmplificationPipeline : pipeLine
+    var pointVertex : [Float] = [0,0,0,1, 0,0, 0,0,0, 1,0,0,1, 0,1,0,1
+    ]
+    var pointIndex : [uint16] = [0]
+    var pointBuffer : MTLBuffer
+    var pointIndexBuffer : MTLBuffer
     
     
     
@@ -692,10 +696,10 @@ class Renderer : NSObject, MTKViewDelegate {
         let houseMesh = Mesh(device: device, Mesh: cubeMDLMesh)
         //houseMesh?.is_shadow_caster = true
         let houseModelMatrix = create_modelMatrix(translation: simd_float3(0,0,0), rotation: simd_float3(0), scale: simd_float3(10))
-        houseMesh?.createInstance(with: houseModelMatrix)
+        houseMesh?.createInstance(with: houseModelMatrix, and: simd_float4(0.5,0.5,0.5,1))
         //houseMesh?.init_instance_buffers()
-        houseMesh?.add_textures(texture: BrickWallTexture)
-        houseMesh?.add_textures(texture: BrickWallTextureN)
+        //houseMesh?.add_textures(texture: BrickWallTexture)
+        //houseMesh?.add_textures(texture: BrickWallTextureN)
         houseMesh?.setCullModeForMesh(side: .back)
 //        let modelMatrix = create_modelMatrix(rotation: simd_float3(0), translation: simd_float3(0,0,-1), scale: simd_float3(1))
 //       //
@@ -707,13 +711,13 @@ class Renderer : NSObject, MTKViewDelegate {
         var boundsArray = [simd_float4]()
        // boundsArray.append(simd_float4(-5,-5,5,1))
        // boundsArray.append(simd_float4(5,5,-5,1))
-   
-        for i in 0..<5{
+        let n = 9
+        for i in 0..<n{
             
             
-                    let x_r : Float = 0
+                    let x_r : Float = 2 * cos(Float(i) * Float((360 / n)))
                     let y_r : Float = 0
-                    let z_r : Float = 5 - Float(i) * 10/5
+                    let z_r : Float = 2 * sin(Float(i) * Float((360 / n)))
 
                     let c_r = Float.random(in: 0...1)
                     let c_g = Float.random(in: 0...1)
@@ -725,7 +729,7 @@ class Renderer : NSObject, MTKViewDelegate {
             boundsArray.append(minBound)
             boundsArray.append(maxbound)
 
-                    let modelMatrix = create_modelMatrix(translation: simd_float3(x_r,y_r,z_r), rotation: simd_float3(0), scale: simd_float3(1))
+                    let modelMatrix = create_modelMatrix(translation: simd_float3(x_r,y_r,z_r), rotation: simd_float3(0), scale: simd_float3(scale))
 
 
 
@@ -734,42 +738,14 @@ class Renderer : NSObject, MTKViewDelegate {
            
         }
         
-        let modelMatrix = create_modelMatrix(rotation: simd_float3(0), translation: simd_float3(0,1,-1), scale: simd_float3(0.2))
-        spheresMesh?.createInstance(with: modelMatrix, and: simd_float4(1,0,0,1))
-        boundsArray.append(simd_float4(0,1,-1,1) - simd_float4(0.2,0.2,0.2,0))
-        boundsArray.append(simd_float4(0,1,-1,1) + simd_float4(0.2,0.2,0.2,0))
-      
+       
       
         
         
             
         
-       
-//        for _ in 0..<100{
-//            let x_r = Float.random(in: -2...(2))
-//            let y_r = Float.random(in: -2...(2))
-//            let z_r = Float.random(in: -10...(-5))
-//
-//            let c_r = Float.random(in: 0...1)
-//            let c_g = Float.random(in: 0...1)
-//            let c_b = Float.random(in: 0...1)
-//            let scale = Float.random(in: 0.3...0.5)
-//
-//            let state = [simd_float3(x_r,y_r,z_r),simd_float3(scale)]
-//            initialState.append(state)
-//
-//            let modelMatrix = create_modelMatrix(translation: simd_float3(x_r,y_r,z_r), rotation: simd_float3(0), scale: simd_float3(scale))
-//
-//
-//
-//            spheresMesh?.createInstance(with: modelMatrix, and: simd_float4(c_r,c_g,c_b,1))
-//
-//
-//        }
-        
-        
-        //spheresMesh?.init_instance_buffers()
- 
+
+   
       
         
         var shadowCamera = Camera(for: mtkView, eye: simd_float3(0,0,0), centre: simd_float3(-1,0,0))
@@ -799,21 +775,28 @@ class Renderer : NSObject, MTKViewDelegate {
         wallIndexBuffer = device.makeBuffer(bytes: &wallIB, length: MemoryLayout<uint16>.stride*6,options: [])
         let VD = generalVertexDescriptor()
         print("creating test Pipeline")
-        testSlicesRenderingPipeline = pipeLine(device, "test_shader_vertex", "test_shader_fragment", VD, true, colourPixelFormat: .bgra8Unorm)
-        renderSlicePipeline = pipeLine(device, "vertex_shader_sliced_rendering", "fragment_shader_sliced_rendering", VD, false)
-        let textureDescriptorColour = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: 1000, height: 1000, mipmapped: false)
-        textureDescriptorColour.arrayLength = 2
+        testSlicesRenderingPipeline = pipeLine(device, "test_shader_vertex", "test_shader_fragment", VD, true, amplificationCount: 3)
+       
+        let textureDescriptorColour = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm_srgb, width: 1000, height: 1000, mipmapped: false)
+        textureDescriptorColour.arrayLength = 3
         textureDescriptorColour.usage = [.shaderWrite,.renderTarget,.shaderRead]
         textureDescriptorColour.textureType = .type2DArray
         
         testTextureArray = device.makeTexture(descriptor: textureDescriptorColour)
         
         let textureDescriptorDepth = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .depth32Float, width: 1000, height: 1000, mipmapped: false)
-        textureDescriptorDepth.arrayLength = 2
+        textureDescriptorDepth.arrayLength = 3
         textureDescriptorDepth.usage = [.shaderWrite,.renderTarget]
         textureDescriptorDepth.textureType = .type2DArray
         
         testDepthTextureArray = device.makeTexture(descriptor: textureDescriptorDepth)
+        
+        
+        
+        testAmplificationPipeline = pipeLine(device, "test_amp_vertex", "test_amp_fragment", VD, false,amplificationCount: 4)!
+        pointBuffer = device.makeBuffer(bytes: &pointVertex, length: MemoryLayout<Float>.stride*17, options: [])!
+        pointIndexBuffer = device.makeBuffer(bytes: &pointIndex, length: MemoryLayout<uint16>.stride,options: [])!
+        
       
 
     }
@@ -835,50 +818,44 @@ class Renderer : NSObject, MTKViewDelegate {
         testShadowScene.shadowPass(with: commandBuffer, in: view)
 //        fps += 1
 //
-//        guard let renderPassDescriptor = view.currentRenderPassDescriptor else {return}
-//        renderPassDescriptor.colorAttachments[0].texture = testTextureArray!
-//        renderPassDescriptor.depthAttachment.texture = testDepthTextureArray!
-//        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
-//        renderPassDescriptor.colorAttachments[0].loadAction = .clear
-//        renderPassDescriptor.colorAttachments[0].storeAction = .store
-//        renderPassDescriptor.renderTargetArrayLength = 2
+        
+//        guard let renderPassDescriptor1 = view.currentRenderPassDescriptor else {return}
+//        renderPassDescriptor1.colorAttachments[0].texture = testTextureArray
+//        renderPassDescriptor1.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
+//        renderPassDescriptor1.depthAttachment.texture = testDepthTextureArray
+//        renderPassDescriptor1.renderTargetArrayLength = 3
 //
-//        var camera = Camera(for: view, eye: simd_float3(0), centre: simd_float3(0,0,-1))
-//        var projection = simd_float4x4(bounds: simd_float3(-1,-1,2), near: 0.1, far: 10)
-//        var sceneConstants = FrameConstants(viewMatrix: camera.cameraMatrix, projectionMatrix: projection)
-//        var modelMatrix = create_modelMatrix(rotation: simd_float3(0), translation: simd_float3(0,0,-3), scale: simd_float3(1))
-//        var modelMatrix1 = create_modelMatrix(rotation: simd_float3(0), translation: simd_float3(0,0,-3), scale: simd_float3(1))
-//        var instanceConstants : [InstanceConstants] = [InstanceConstants(modelMatrix: modelMatrix, normalMatrix: simd_float4x4(1)),InstanceConstants(modelMatrix: modelMatrix1, normalMatrix: simd_float4x4(1))]
+//        guard let renderEncoder1 = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor1) else {return}
 //
-//        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {return}
-//        renderEncoder.setDepthStencilState(depthStencilState)
-//        renderEncoder.setVertexBytes(&sceneConstants, length: MemoryLayout<FrameConstants>.stride, index: vertexBufferIDs.frameConstant)
-//        renderEncoder.setVertexBytes(&instanceConstants, length: MemoryLayout<InstanceConstants>.stride*2, index: vertexBufferIDs.instanceConstant)
-//        renderEncoder.setRenderPipelineState(testSlicesRenderingPipeline!.m_pipeLine)
-//        renderEncoder.setVertexBuffer(wallVertexBuffer, offset: 0, index: 0)
-//        renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: 6, indexType: .uint16, indexBuffer: wallIndexBuffer!, indexBufferOffset: 0, instanceCount: 2)
-//        renderEncoder.endEncoding()
+//        var mapping0 = MTLVertexAmplificationViewMapping(viewportArrayIndexOffset: 0, renderTargetArrayIndexOffset: 2)
+//        var mapping1 = MTLVertexAmplificationViewMapping(viewportArrayIndexOffset: 0, renderTargetArrayIndexOffset: 1)
+//        var mapping2 = MTLVertexAmplificationViewMapping(viewportArrayIndexOffset: 0, renderTargetArrayIndexOffset: 0)
+//        let mappings = [mapping0,mapping1,mapping2]
 //
-//        guard let renderPassDescriptor = view.currentRenderPassDescriptor else {return}
-//        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
-//        renderPassDescriptor.colorAttachments[0].loadAction = .clear
-//        renderPassDescriptor.colorAttachments[0].storeAction = .store
-//
-//        guard let renderEncoder1 = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {return}
-//
-//        renderEncoder1.setRenderPipelineState(renderSlicePipeline!.m_pipeLine)
-//        renderEncoder1.setFragmentTexture(testTextureArray, index: 0)
-//        renderEncoder1.setFragmentSamplerState(sampler, index: 0)
+//        renderEncoder1.setRenderPipelineState(testSlicesRenderingPipeline!.m_pipeLine)
+//        renderEncoder1.setVertexAmplificationCount(3, viewMappings: mappings)
 //        renderEncoder1.setVertexBuffer(wallVertexBuffer, offset: 0, index: 0)
-//        renderEncoder1.setVertexBytes(&sceneConstants, length: MemoryLayout<FrameConstants>.stride, index: vertexBufferIDs.frameConstant)
-//        renderEncoder1.setVertexBytes(&instanceConstants, length: MemoryLayout<InstanceConstants>.stride*2, index: vertexBufferIDs.instanceConstant)
-//        var index = 1
-//        renderEncoder1.setFragmentBytes(&index, length: MemoryLayout<uint>.stride, index: 10)
-//        renderEncoder1.setVertexBytes(&index, length: MemoryLayout<uint>.stride, index: 10)
 //        renderEncoder1.drawIndexedPrimitives(type: .triangle, indexCount: 6, indexType: .uint16, indexBuffer: wallIndexBuffer!, indexBufferOffset: 0, instanceCount: 1)
 //
 //        renderEncoder1.endEncoding()
-        
+//
+//
+//        guard let renderPassDescriptor = view.currentRenderPassDescriptor else {return}
+//
+//        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
+//        renderPassDescriptor.colorAttachments[0].loadAction = .clear
+//        renderPassDescriptor.colorAttachments[0].storeAction = .store
+//
+//
+//       guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {return}
+//        var offset : [simd_float4] = [simd_float4(-0.5,0,0,0),simd_float4(0.5,0,0,0),simd_float4(0,0.5,0,0),simd_float4(0,-0.5,0,0)]
+//        renderEncoder.setRenderPipelineState(testAmplificationPipeline.m_pipeLine)
+//        renderEncoder.setVertexBytes(&offset, length: MemoryLayout<simd_float4>.stride*4, index: 10)
+//        renderEncoder.setVertexAmplificationCount(4, viewMappings: nil)
+//        renderEncoder.setVertexBuffer(pointBuffer, offset: 0, index: 0)
+//        renderEncoder.drawIndexedPrimitives(type: .point, indexCount: 1, indexType: .uint16, indexBuffer: pointIndexBuffer, indexBufferOffset: 0, instanceCount: 1)
+//
+//        renderEncoder.endEncoding()
         commandBuffer.present(view.currentDrawable!)
         commandBuffer.commit()
        
