@@ -833,7 +833,7 @@ class pipeLine {
             return nil
         }
     }
-    init?(_ device : MTLDevice, _ vertexFunctionName : String, _ fragmentFunctionName : String?, _ vertexDescriptor : MTLVertexDescriptor,  _ renderToCube : Bool, amplificationCount : Int = 1, colourPixelFormat : MTLPixelFormat = .bgra8Unorm_srgb, depthPixelFormat : MTLPixelFormat = .depth32Float){
+    init?(_ device : MTLDevice, _ vertexFunctionName : String, _ fragmentFunctionName : String?, _ vertexDescriptor : MTLVertexDescriptor,  _ renderToCube : Bool, amplificationCount : Int = 1, colourPixelFormat : MTLPixelFormat = .bgra8Unorm_srgb, depthPixelFormat : MTLPixelFormat = .depth32Float, label : String = "nolable"){
         
         library = device.makeDefaultLibrary()!
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
@@ -852,9 +852,10 @@ class pipeLine {
         }
         do {
             try m_pipeLine = device.makeRenderPipelineState(descriptor: pipelineDescriptor)
-            print("PipeLine Created Successfully")
+            print("PipeLine \(label) Created Successfully")
         }
         catch{
+            print("\(label) failed to inittialise")
             print(error)
             return nil
         }

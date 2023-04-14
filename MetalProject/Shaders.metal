@@ -32,6 +32,7 @@ enum class vertexBufferIDs : int {
     lightConstantBuffer = 4,
     lightbuffer = 5,
     lightCount = 6,
+    lightPos = 7,
     
     
 };
@@ -86,6 +87,7 @@ enum class textureIDs : int {
             float3 eye_pos;
             float3 tangent;
             float3 bitangent;
+            float3 lightPos;
             
             
             
@@ -100,6 +102,8 @@ enum class textureIDs : int {
         
         struct VertexOutShadow{
             float4 pos [[position]];
+            float3 worldPos;
+            float4 lightPos;
             float4 colour;
             uint slice[[render_target_array_index]];
             
@@ -221,6 +225,88 @@ enum class textureIDs : int {
         //
         
         
+        vertex VertexOut vertex_point_shadow_render(VertexIn in [[stage_in]],
+                                                    constant InstanceConstants* Transforms
+                                                    [[buffer(vertexBufferIDs::instanceConstantsBuffer)]],
+                                                    constant FrameConstants& SceneConstant [[buffer(vertexBufferIDs::frameConstantsBuffer)]],
+                                                    constant simd_float4* colour_out [[buffer(vertexBufferIDs::colour)]],
+                                                    uint index [[instance_id]]
+                                                    
+                                                    ){
+            
+            VertexOut out;
+            out.colour = colour_out[index];
+            simd_float4x4 modelMatrix = Transforms[index].modelMatrix;
+            simd_float4x4 normalMatrix = Transforms[index].normalMatrix;
+            simd_float4x4 viewMatrix = SceneConstant.viewMatrix;
+            simd_float4x4 projectionMatrix = SceneConstant.projectionMatrix;
+            out.world_pos = (modelMatrix * in.pos).xyz;
+            out.pos = projectionMatrix * viewMatrix * simd_float4(out.world_pos,1);
+            out.world_normal = normalize((modelMatrix * simd_float4(in.normal.xyz,0)).xyz);
+            return out;
+            
+        }
+        
+        fragment float4 fragment_point_shadow_render(VertexOut in [[stage_in]],
+                                                     // world position of the lights
+                                                     constant simd_float4* lightPos [[buffer(vertexBufferIDs::lightPos)]],
+                                                     constant int& lightCount [[buffer(vertexBufferIDs::lightCount)]],
+                                                     texturecube_array<float> depthMap [[texture(textureIDs::cubeMap)]]
+                                                     ){
+            
+            constexpr sampler shadowSampler(coord::normalized,
+                                            address::clamp_to_edge,
+                                            filter::linear,
+                                            compare_func::less);
+            simd_float3 biasedWorldPos = in.world_pos + (5e-3f) * in.world_normal;
+            simd_float3 to_fragmentV = normalize(biasedWorldPos - lightPos[0].xyz);
+            to_fragmentV.y *= -1.0;
+            float d = length(biasedWorldPos - lightPos[0].xyz) / 20.0;
+            float depthMapValue = depthMap.sample(shadowSampler, to_fragmentV, 0).r;
+            //float depth_bias = ;
+            if(d  > depthMapValue){
+                return simd_float4(0,0,0,1);
+            }
+            else {
+                return in.colour;
+            }
+            
+            
+            
+        }
+        
+        
+        vertex VertexOutShadow vertex_shadow_point(VertexIn in [[stage_in]],
+                                                   constant InstanceConstants* Transforms [[buffer(vertexBufferIDs::instanceConstantsBuffer)]],
+                                                   constant lightConstants* lightTransform [[buffer(vertexBufferIDs::lightConstantBuffer)]],
+                                                   constant simd_float4* lightPos [[buffer(vertexBufferIDs::lightPos)]],
+                                                   ushort amplificationIndex [[amplification_id]],
+                                                   uint index [[instance_id]]
+                                                   ){
+            
+            VertexOutShadow out;
+            out.slice = uint(amplificationIndex);
+            simd_float4x4 modelMatrix = Transforms[index].modelMatrix;
+            simd_float4x4 lightViewMatrix = lightTransform[amplificationIndex].lightViewMatrix;
+            simd_float4x4 lightProjectionMatrix = lightTransform[amplificationIndex].lightProjectionMatrix;
+            // these are shared across amplifications
+            out.worldPos = (modelMatrix * in.pos).xyz;
+            out.lightPos = lightPos[amplificationIndex];
+            
+            out.pos = lightProjectionMatrix * lightViewMatrix * modelMatrix * simd_float4(out.worldPos,1);
+           
+            
+            return out;
+            
+            
+        }
+        
+        fragment float4 fragment_shadow_point(VertexOutShadow in [[stage_in]]){
+            float d = distance(in.worldPos, in.lightPos.xyz)/20;
+            return float4(d);
+        }
+        
+        
         vertex VertexOutShadow vertex_shadow(VertexIn in [[stage_in]],
                                     constant InstanceConstants* Transforms [[buffer(vertexBufferIDs::instanceConstantsBuffer)]],
                                     constant FrameConstants* SceneConstants [[buffer(vertexBufferIDs::frameConstantsBuffer)]],
@@ -234,7 +320,7 @@ enum class textureIDs : int {
             int instance = index % lightCount;
             simd_float4x4 modelMatrix = Transforms[instance].modelMatrix;
             simd_float4x4 projectionMatrix = lightTransform[current_lightIndex].lightProjectionMatrix;
-            simd_float4x4 viewMatrix = lightTransform[current_lightIndex].lightViewMatirx;
+            simd_float4x4 viewMatrix = lightTransform[current_lightIndex].lightViewMatrix;
             simd_float4x4 lightProjectViewModel = projectionMatrix * viewMatrix * modelMatrix;
             out.pos = lightProjectViewModel * in.pos;
             out.slice = current_lightIndex;
@@ -448,7 +534,7 @@ enum class textureIDs : int {
                 
                 
                 
-                float4x4 lightProjectionViewMatrix = lightTransforms[i].lightProjectionMatrix * lightTransforms[i].lightViewMatirx;
+                float4x4 lightProjectionViewMatrix = lightTransforms[i].lightProjectionMatrix * lightTransforms[i].lightViewMatrix;
                 simd_float4 fragmentLightPos = lightProjectionViewMatrix * simd_float4(in.world_pos,1);
                 simd_float2 fragment_tex = fragmentLightPos.xy * 0.5 + 0.5;
                 float3 biased_worldPos = in.world_pos + 5e-3f * in.world_pos;

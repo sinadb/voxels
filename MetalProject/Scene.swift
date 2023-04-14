@@ -168,11 +168,13 @@ func createPipelineForShadowsWithNormalMap(device : MTLDevice, vertexDescriptor 
 }
 
 
+
+
+
 class DefaultScene {
     
     var fps = 0
     let device : MTLDevice
-    var pointLightPos : simd_float4?
     var defaultPipeline : pipeLine
     var flatTexturedMeshPipeline : pipeLine
     var renderShadowPipeline : pipeLine
@@ -199,6 +201,8 @@ class DefaultScene {
     var shadowAndNormalMappedPipeline : pipeLine
     var normalMappedPipeline : pipeLine
     var sceneLights = [Lights]()
+    var totalShadowCasters : Int = 0
+    var pointLightPos = [simd_float4]()
     
     init(device : MTLDevice, projectionMatrix : simd_float4x4, attachTo camera : Camera) {
         var False = false
@@ -249,6 +253,7 @@ class DefaultScene {
     }
     
     func addDrawable(mesh : Mesh){
+       
         mesh.init_instance_buffers(with: sceneCamera.cameraMatrix)
         if(!(mesh.has_flat)){
             defaultMeshes.append(mesh)
@@ -339,8 +344,8 @@ class DefaultScene {
             renderEncoder.setRenderPipelineState(shadowAndConstantColourPipeline.m_pipeLine)
             
             sceneConstant.viewMatrix = sceneCamera.cameraMatrix
+        
             
-            sceneConstant.viewMatrix = sceneCamera.cameraMatrix
             renderEncoder.setVertexBytes(&sceneConstant, length: MemoryLayout<FrameConstants>.stride, index: vertexBufferIDs.frameConstant)
             renderEncoder.setFragmentBytes(&lightTransforms, length: MemoryLayout<lightConstants>.stride*sceneLights.count, index: vertexBufferIDs.lightConstant)
             renderEncoder.setFragmentSamplerState(defaultSamplerState, index: 0)
@@ -450,7 +455,7 @@ class DefaultScene {
     }
     
     func setPointLight(at position : simd_float4){
-        pointLightPos = position
+        pointLightPos.append(position)
     }
     
 }
@@ -458,8 +463,18 @@ class DefaultScene {
 
 class shadowMapScene : DefaultScene {
     var shadowMapPipeline : pipeLine?
+    var pointShadowMapPipeline : pipeLine?
+    var pointShadowMapRenderPassPipeline : pipeLine?
+    
     var renderTarget : MTLTexture?
     var unusedColourTexture : MTLTexture?
+    
+    // this is a cubearray
+    var pointShadowRenderTarget : MTLTexture?
+    // this is unused as we are rendering the distance into the colour attachment
+    var pointShadowDepthTarget : MTLTexture?
+    
+    var pointLightConstantsArray = [lightConstants]()
     
     func addDirectionalLight(lightCamera : Camera, with orthoProjection : simd_float4x4){
         let lightProjection = orthoProjection
@@ -470,7 +485,69 @@ class shadowMapScene : DefaultScene {
         sceneLights.append(light)
         
        
-        lightTransforms.append(lightConstants(lightViewMatirx: lightCamera.cameraMatrix, lightProjectionMatrix: lightProjection))
+        lightTransforms.append(lightConstants(lightViewMatrix: lightCamera.cameraMatrix, lightProjectionMatrix: lightProjection))
+        
+    }
+    
+    func addPointLight(position : simd_float3){
+        
+        pointLightPos.append(simd_float4(position.x,position.y,position.z,1))
+        let projection = simd_float4x4(fovRadians: 3.14/2, aspectRatio: 1, near: 0.1, far: 20)
+        
+        var cameraArray = [simd_float4x4]()
+        
+        cameraArray.append(simd_float4x4(eye: position, center: simd_float3(1,0,0) + position, up: simd_float3(0,-1,0)))
+                           
+        cameraArray.append(simd_float4x4(eye: position, center: simd_float3(-1,0,0) + position, up: simd_float3(0,-1,0)))
+        
+        cameraArray.append(simd_float4x4(eye: position, center: simd_float3(0,-1,0) + position, up: simd_float3(0,0,-1)))
+           
+        cameraArray.append(simd_float4x4(eye: position, center: simd_float3(0,1,0) + position, up: simd_float3(0,0,1)))
+                           
+        cameraArray.append(simd_float4x4(eye: position, center: simd_float3(0,0,1) + position, up: simd_float3(0,-1,0)))
+                   
+        cameraArray.append(simd_float4x4(eye: position, center: simd_float3(0,0,-1) + position, up: simd_float3(0,-1,0)))
+                   
+       
+        for i in 0..<6{
+            let lightConstant = lightConstants(lightViewMatrix: cameraArray[i], lightProjectionMatrix: projection)
+            pointLightConstantsArray.append(lightConstant)
+        }
+    }
+    
+    func init_pointShadowMapPipeline(){
+        if(pointLightConstantsArray.isEmpty){
+            print("Cannot create pipeline as no point lights been added")
+            return 
+        }
+        pointShadowMapPipeline = pipeLine(device, "vertex_shadow_point", "fragment_shadow_point", defaultVertexDescriptor, true, amplificationCount: pointLightConstantsArray.count, colourPixelFormat: .r16Unorm, label: "PointShadowPipeline")
+    }
+    
+    func init_pointShadowRenderTargets(){
+        if(pointLightConstantsArray.isEmpty){
+            print("Cannot create a cubeMap before any light has been added")
+            return
+        }
+        let shadowMapSize = 1200
+        
+        let textureDescriptor = MTLTextureDescriptor.textureCubeDescriptor(pixelFormat: .r16Unorm, size: shadowMapSize, mipmapped: false)
+        textureDescriptor.storageMode = .private
+        textureDescriptor.usage = [.renderTarget, .shaderRead]
+        textureDescriptor.textureType = .typeCubeArray
+        textureDescriptor.arrayLength = pointLightConstantsArray.count / 6
+        
+        
+        let textureDescriptorDepth = MTLTextureDescriptor.textureCubeDescriptor(pixelFormat: .depth32Float, size: shadowMapSize, mipmapped: false)
+        textureDescriptorDepth.storageMode = .private
+        textureDescriptorDepth.usage = [.renderTarget, .shaderRead]
+        textureDescriptorDepth.textureType = .typeCubeArray
+        textureDescriptorDepth.arrayLength = pointLightConstantsArray.count / 6
+        
+        pointShadowRenderTarget = device.makeTexture(descriptor: textureDescriptor)
+        pointShadowDepthTarget = device.makeTexture(descriptor: textureDescriptorDepth)
+        
+        
+        
         
     }
     
@@ -499,6 +576,8 @@ class shadowMapScene : DefaultScene {
         
        
         shadowMapPipeline = pipeLine(device, "vertex_shadow", "fragment_shadow", defaultVertexDescriptor ,true)
+        
+        pointShadowMapRenderPassPipeline = pipeLine(device, "vertex_point_shadow_render", "fragment_point_shadow_render", defaultVertexDescriptor, false,label: "RenderPointShadowPipeline")
         
        
         
@@ -589,6 +668,95 @@ class shadowMapScene : DefaultScene {
         
         
         super.drawScene(with: commandBuffer, in: view)
+    }
+    
+    
+    func test_pointShadowDepthPass(with commandBuffer : MTLCommandBuffer, in view : MTKView){
+        
+        guard let renderPassDescriptor = view.currentRenderPassDescriptor else {return}
+        renderPassDescriptor.colorAttachments[0].texture = pointShadowRenderTarget
+        renderPassDescriptor.depthAttachment.texture = pointShadowDepthTarget
+        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
+        renderPassDescriptor.depthAttachment.clearDepth = 1
+        renderPassDescriptor.colorAttachments[0].storeAction = .store
+        renderPassDescriptor.colorAttachments[0].loadAction = .clear
+        renderPassDescriptor.depthAttachment.loadAction = .clear
+        renderPassDescriptor.renderTargetArrayLength = pointLightConstantsArray.count
+        
+        
+        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {return}
+        
+        renderEncoder.setRenderPipelineState(pointShadowMapPipeline!.m_pipeLine)
+        renderEncoder.setDepthStencilState(defaultDepthStencilState)
+        renderEncoder.setVertexBytes(&pointLightPos, length: MemoryLayout<simd_float4>.stride*pointLightPos.count, index: vertexBufferIDs.lightPos)
+        renderEncoder.setVertexAmplificationCount(pointLightConstantsArray.count, viewMappings: nil)
+        renderEncoder.setVertexBytes(&pointLightConstantsArray, length: MemoryLayout<lightConstants>.stride*pointLightConstantsArray.count, index: vertexBufferIDs.lightConstant)
+        
+        for mesh in defaultMeshes{
+            if let _ = mesh.is_shadow_caster{
+                mesh.draw(renderEncoder: renderEncoder, with: nil, culling: .front)
+            }
+            
+        }
+        
+        
+        for mesh in flatTexturedMeshed {
+            if let _ = mesh.is_shadow_caster{
+                mesh.draw(renderEncoder: renderEncoder, with: nil, culling: .front)
+            }
+        }
+        for mesh in normalMappedMesh {
+            if let _ = mesh.is_shadow_caster{
+                mesh.draw(renderEncoder: renderEncoder, with: nil, culling: .front)
+            }
+        }
+        
+        renderEncoder.endEncoding()
+        
+        test_pointShadowRenderPass(with: commandBuffer, in: view)
+        
+        
+        
+    }
+    
+    func test_pointShadowRenderPass(with commandBuffer : MTLCommandBuffer, in view : MTKView){
+        
+        guard let renderPassDescriptor = view.currentRenderPassDescriptor else {return}
+        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
+        renderPassDescriptor.depthAttachment.clearDepth = 1
+        renderPassDescriptor.depthAttachment.loadAction = .clear
+        
+        
+        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {return}
+        renderEncoder.setRenderPipelineState(pointShadowMapRenderPassPipeline!.m_pipeLine)
+        sceneConstant.viewMatrix = sceneCamera.cameraMatrix
+        renderEncoder.setVertexBytes(&sceneConstant, length: MemoryLayout<FrameConstants>.stride, index: vertexBufferIDs.frameConstant)
+        renderEncoder.setFragmentTexture(pointShadowRenderTarget, index: textureIDs.cubeMap)
+        renderEncoder.setFragmentBytes(&pointLightPos, length: MemoryLayout<simd_float4>.stride*pointLightPos.count, index: vertexBufferIDs.lightPos)
+        
+        
+        for mesh in defaultMeshes{
+           
+                mesh.draw(renderEncoder: renderEncoder, with: nil, culling: .front)
+            
+            
+        }
+        
+        
+        for mesh in flatTexturedMeshed {
+          
+                mesh.draw(renderEncoder: renderEncoder, with: nil, culling: .front)
+            
+        }
+        for mesh in normalMappedMesh {
+           
+                mesh.draw(renderEncoder: renderEncoder, with: nil, culling: .front)
+            
+        }
+        renderEncoder.endEncoding()
+        
+        
+        
     }
 
     

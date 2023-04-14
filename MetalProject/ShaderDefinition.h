@@ -41,7 +41,7 @@ struct FrameConstants {
 
 
 struct lightConstants {
-    simd_float4x4 lightViewMatirx;
+    simd_float4x4 lightViewMatrix;
     simd_float4x4 lightProjectionMatrix;
 };
 

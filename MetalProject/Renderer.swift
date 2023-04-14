@@ -715,28 +715,34 @@ class Renderer : NSObject, MTKViewDelegate {
         for i in 0..<n{
             
             
-                    let x_r : Float = 2 * cos(Float(i) * Float((360 / n)))
+            let theta = Float(i) * Float(6.28 / Float(n))
+                    let x_r : Float = 4 * cos(theta)
                     let y_r : Float = 0
-                    let z_r : Float = 2 * sin(Float(i) * Float((360 / n)))
+                    let z_r : Float = 4 * sin(theta)
 
                     let c_r = Float.random(in: 0...1)
                     let c_g = Float.random(in: 0...1)
                     let c_b = Float.random(in: 0...1)
-                    let scale = Float.random(in: 0.1...0.2)
+                    let scale = Float.random(in: 0.1...0.4)
             
                     let minBound = simd_float4(x_r,y_r,z_r,1) - simd_float4(scale,scale,scale,0)
                     let maxbound = simd_float4(x_r,y_r,z_r,1) + simd_float4(scale,scale,scale,0)
             boundsArray.append(minBound)
             boundsArray.append(maxbound)
 
-                    let modelMatrix = create_modelMatrix(translation: simd_float3(x_r,y_r,z_r), rotation: simd_float3(0), scale: simd_float3(scale))
+            let modelMatrix = create_modelMatrix(translation: simd_float3(x_r,y_r,z_r), rotation: simd_float3(0), scale: simd_float3(0.5))
 
 
 
-                    spheresMesh?.createInstance(with: modelMatrix, and: simd_float4(c_r,c_g,c_b,1))
+                    //spheresMesh?.createInstance(with: modelMatrix, and: simd_float4(c_r,c_g,c_b,1))
             
            
         }
+        
+        let modelMatrix = create_modelMatrix(rotation: simd_float3(0), translation: simd_float3(0,2,0), scale: simd_float3(1))
+        let modelMatrix1 = create_modelMatrix(rotation: simd_float3(0), translation: simd_float3(0,-2,0), scale: simd_float3(1))
+        spheresMesh?.createInstance(with: modelMatrix,and: simd_float4(1,0,0,1))
+        spheresMesh?.createInstance(with: modelMatrix1 , and: simd_float4(0,1,0,1))
         
        
       
@@ -770,6 +776,8 @@ class Renderer : NSObject, MTKViewDelegate {
         testShadowScene.initShadowMap()
         testShadowScene.addDrawable(mesh: houseMesh!)
         testShadowScene.addDrawable(mesh: spheresMesh!)
+        
+        
 
         wallVertexBuffer = device.makeBuffer(bytes: &wallVB, length: MemoryLayout<Float>.stride*17*4,options: [])
         wallIndexBuffer = device.makeBuffer(bytes: &wallIB, length: MemoryLayout<uint16>.stride*6,options: [])
@@ -797,6 +805,12 @@ class Renderer : NSObject, MTKViewDelegate {
         pointBuffer = device.makeBuffer(bytes: &pointVertex, length: MemoryLayout<Float>.stride*17, options: [])!
         pointIndexBuffer = device.makeBuffer(bytes: &pointIndex, length: MemoryLayout<uint16>.stride,options: [])!
         
+        
+        
+        testShadowScene.addPointLight(position: simd_float3(0))
+        print("creating point shadow pipeline")
+        testShadowScene.init_pointShadowMapPipeline()
+        testShadowScene.init_pointShadowRenderTargets()
       
 
     }
@@ -815,7 +829,9 @@ class Renderer : NSObject, MTKViewDelegate {
         
        
       
-        testShadowScene.shadowPass(with: commandBuffer, in: view)
+       
+        //testShadowScene.shadowPass(with: commandBuffer, in: view)
+        testShadowScene.test_pointShadowDepthPass(with: commandBuffer, in: view)
 //        fps += 1
 //
         
