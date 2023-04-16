@@ -734,6 +734,14 @@ class shadowMapScene : DefaultScene {
         renderEncoder.setFragmentTexture(pointShadowRenderTarget, index: textureIDs.cubeMap)
         renderEncoder.setFragmentBytes(&pointLightPos, length: MemoryLayout<simd_float4>.stride*pointLightPos.count, index: vertexBufferIDs.lightPos)
         
+        var eyeLightPos = [simd_float4]()
+        
+        for i in 0..<pointLightPos.count {
+            let position = sceneConstant.viewMatrix * pointLightPos[i]
+            eyeLightPos.append(position)
+        }
+        renderEncoder.setFragmentBytes(&eyeLightPos, length: MemoryLayout<simd_float4>.stride*eyeLightPos.count, index: 10)
+        
         
         for mesh in defaultMeshes{
            

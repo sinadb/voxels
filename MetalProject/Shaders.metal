@@ -243,6 +243,8 @@ enum class textureIDs : int {
             out.world_pos = (modelMatrix * in.pos).xyz;
             out.pos = projectionMatrix * viewMatrix * simd_float4(out.world_pos,1);
             out.world_normal = normalize((modelMatrix * simd_float4(in.normal.xyz,0)).xyz);
+            out.eye_normal = normalize((normalMatrix * in.normal).xyz);
+            out.eye_pos = (viewMatrix * simd_float4(out.world_pos,1)).xyz;
             return out;
             
         }
@@ -250,14 +252,30 @@ enum class textureIDs : int {
         fragment float4 fragment_point_shadow_render(VertexOut in [[stage_in]],
                                                      // world position of the lights
                                                      constant simd_float4* lightPos [[buffer(vertexBufferIDs::lightPos)]],
+                                                     constant simd_float4* eyeLightPos [[buffer(10)]],
                                                      constant int& lightCount [[buffer(vertexBufferIDs::lightCount)]],
                                                      texturecube_array<float> depthMap [[texture(textureIDs::cubeMap)]]
                                                      ){
+            
+            
+            float specularExponenet = 150;
+            float ambientFactor = 0.1;
+            float finalLightFactor = ambientFactor;
+            
+            simd_float3 V = normalize(- in.eye_pos);
+            simd_float3 L = normalize(eyeLightPos[0].xyz - in.eye_pos);
+            simd_float3 H = normalize(L + V);
+            float diffuseFactor = saturate(dot(L,in.eye_normal));
+            float specularFactor = powr(saturate(dot(in.eye_normal, H)), 150.0) * 5;
+            finalLightFactor += (diffuseFactor + specularFactor);
+            
             
             constexpr sampler shadowSampler(coord::normalized,
                                             address::clamp_to_edge,
                                             filter::linear,
                                             compare_func::less);
+            
+            
             simd_float3 biasedWorldPos = in.world_pos + (5e-3f) * in.world_normal;
             simd_float3 to_fragmentV = normalize(biasedWorldPos - lightPos[0].xyz);
             to_fragmentV.y *= -1.0;
@@ -265,10 +283,10 @@ enum class textureIDs : int {
             float depthMapValue = depthMap.sample(shadowSampler, to_fragmentV, 0).r;
             //float depth_bias = ;
             if(d  > depthMapValue){
-                return simd_float4(0,0,0,1);
+                return simd_float4(in.colour.rgb * finalLightFactor,1) * 0.0;
             }
             else {
-                return in.colour;
+                return simd_float4(in.colour.rgb * finalLightFactor, 1);
             }
             
             

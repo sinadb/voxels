@@ -734,16 +734,16 @@ class Renderer : NSObject, MTKViewDelegate {
 
 
 
-                    //spheresMesh?.createInstance(with: modelMatrix, and: simd_float4(c_r,c_g,c_b,1))
+                    spheresMesh?.createInstance(with: modelMatrix, and: simd_float4(c_r,c_g,c_b,1))
             
            
         }
         
-        let modelMatrix = create_modelMatrix(rotation: simd_float3(0), translation: simd_float3(0,2,0), scale: simd_float3(1))
-        let modelMatrix1 = create_modelMatrix(rotation: simd_float3(0), translation: simd_float3(0,-2,0), scale: simd_float3(1))
-        spheresMesh?.createInstance(with: modelMatrix,and: simd_float4(1,0,0,1))
-        spheresMesh?.createInstance(with: modelMatrix1 , and: simd_float4(0,1,0,1))
-        
+//        let modelMatrix = create_modelMatrix(rotation: simd_float3(0), translation: simd_float3(0,2,0), scale: simd_float3(1))
+//        let modelMatrix1 = create_modelMatrix(rotation: simd_float3(0), translation: simd_float3(0,-2,0), scale: simd_float3(1))
+//        spheresMesh?.createInstance(with: modelMatrix,and: simd_float4(1,0,0,1))
+//        spheresMesh?.createInstance(with: modelMatrix1 , and: simd_float4(0,1,0,1))
+//        
        
       
         
