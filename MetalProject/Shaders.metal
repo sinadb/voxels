@@ -312,7 +312,7 @@ enum class textureIDs : int {
             out.lightPos = lightPos[amplificationIndex];
             
             out.pos = lightProjectionMatrix * lightViewMatrix * modelMatrix * simd_float4(out.worldPos,1);
-           
+            
             
             return out;
             
@@ -326,13 +326,13 @@ enum class textureIDs : int {
         
         
         vertex VertexOutShadow vertex_shadow(VertexIn in [[stage_in]],
-                                    constant InstanceConstants* Transforms [[buffer(vertexBufferIDs::instanceConstantsBuffer)]],
-                                    constant FrameConstants* SceneConstants [[buffer(vertexBufferIDs::frameConstantsBuffer)]],
-                                    constant lightConstants* lightTransform [[buffer(vertexBufferIDs::lightConstantBuffer)]],
-                                    constant uint* sliceIndex [[buffer(10)]],
+                                             constant InstanceConstants* Transforms [[buffer(vertexBufferIDs::instanceConstantsBuffer)]],
+                                             constant FrameConstants* SceneConstants [[buffer(vertexBufferIDs::frameConstantsBuffer)]],
+                                             constant lightConstants* lightTransform [[buffer(vertexBufferIDs::lightConstantBuffer)]],
+                                             constant uint* sliceIndex [[buffer(10)]],
                                              constant int& lightCount [[buffer(vertexBufferIDs::lightCount)]],
-                                    uint index [[instance_id]]
-                                    ){
+                                             uint index [[instance_id]]
+                                             ){
             VertexOutShadow out;
             uint current_lightIndex = sliceIndex[index];
             int instance = index % lightCount;
@@ -531,7 +531,7 @@ enum class textureIDs : int {
             // inputted light position and direction is in eye space
             float3 Normal = in.eye_normal;
             if(has_normal_map){
-              
+                
                 simd_float3 tangent = normalize(in.tangent - dot(in.tangent, in.eye_normal) * in.eye_normal);
                 simd_float3 bitangent = normalize(cross(in.eye_normal, tangent));
                 simd_float3x3 TBN = simd_float3x3(normalize(tangent),bitangent,normalize(in.eye_normal));
@@ -570,12 +570,12 @@ enum class textureIDs : int {
                     finalLightFactor *= shadowCoverage;
                 }
                 
-               
+                
             }
-                finalLightFactor = saturate(finalLightFactor );
+            finalLightFactor = saturate(finalLightFactor );
             
             
-           
+            
             
             
             
@@ -783,8 +783,8 @@ enum class textureIDs : int {
         
         vertex VertexOutSlice test_shader_vertex(VertexIn in [[stage_in]],
                                                  ushort ampIndex [[amplification_id]],
-                                                  uint index [[instance_id]]
-                                                  )
+                                                 uint index [[instance_id]]
+                                                 )
         {
             VertexOutSlice out;
             out.slice = 0;
@@ -792,7 +792,7 @@ enum class textureIDs : int {
             out.colour = float4(1);
             if(ampIndex == 0){
                 out.colour = float4(1,0,0,1);
-                   
+                
             }
             if(ampIndex == 1){
                 out.colour = float4(0,1,0,1);
@@ -800,7 +800,7 @@ enum class textureIDs : int {
             }
             if(ampIndex == 2){
                 out.colour = float4(0,0,1,1);
-               
+                
             }
             return out;
         }
@@ -811,17 +811,17 @@ enum class textureIDs : int {
         
         
         vertex VertexOut vertex_shader_sliced_rendering(VertexIn in [[stage_in]],
-                                                      ushort index [[amplification_id]]
-                                                      ){
+                                                        ushort index [[amplification_id]]
+                                                        ){
             VertexOut out;
             out.pos = in.pos;
             return out;
         }
         fragment float4 fragment_shader_sliced_rendering(VertexOut in [[stage_in]],
-                                                     texture2d_array<float> texture [[texture(0)]],
-                                                     constant uint& index[[buffer(10)]],
-                                                     sampler textureSampler [[sampler(0)]]
-                                                     ){
+                                                         texture2d_array<float> texture [[texture(0)]],
+                                                         constant uint& index[[buffer(10)]],
+                                                         sampler textureSampler [[sampler(0)]]
+                                                         ){
             //return float4(0,1,0,1);
             return texture.sample(textureSampler, in.tex, index);
             
@@ -837,16 +837,16 @@ enum class textureIDs : int {
             //out.pos = in.pos;
             out.pos = in.pos + offset[index];
             if(index == 0){
-               
+                
                 out.colour = simd_float4(1,0,0,1);
             }
             if(index == 1){
-             
+                
                 out.colour = simd_float4(0,1,0,1);
-              
+                
             }
             if(index == 2){
-               
+                
                 out.colour = simd_float4(0,0,1,1);
             }
             if(index == 3){
@@ -859,4 +859,167 @@ enum class textureIDs : int {
         fragment float4 test_amp_fragment(VertexOut in [[stage_in]]){
             return in.colour;
         }
-       
+        
+        
+        
+        // render a simple skybox
+        
+        vertex VertexOut vertexRenderSkyBox(VertexIn in [[stage_in]],
+                                            constant FrameConstants& frameConstants [[buffer(vertexBufferIDs::frameConstantsBuffer)]]
+                                            ){
+            
+            VertexOut out;
+            simd_float4x4 viewMatrix = frameConstants.viewMatrix;
+            simd_float4x4 projectionMatrix = frameConstants.projectionMatrix;
+            // kill the translation part of the view matrix
+            viewMatrix.columns[3] = simd_float4(0,0,0,1);
+            simd_float4 pos = projectionMatrix * viewMatrix * in.pos;
+            pos.z = pos.w;
+            out.pos = pos;
+            out.world_pos = normalize(in.pos.xyz);
+            return out;
+            
+        }
+        
+        fragment float4 fragmentRenderSkyBox(VertexOut in [[stage_in]],
+                                             texturecube<float> cubeMap [[texture(textureIDs::cubeMap)]]){
+            
+            
+            
+            constexpr sampler cubeMapSampler(coord::normalized,
+                                             address::clamp_to_edge,
+                                             filter::linear
+                                             );
+            //return float4(1,0,0,1);
+            return cubeMap.sample(cubeMapSampler, in.world_pos);
+            
+        }
+        
+        // render to cube for the cubemap reflections
+        
+        
+        struct VertexOutRenderToCube{
+            float4 pos [[position]];
+            float3 worldPos;
+            float4 colour;
+            uint slice[[render_target_array_index]];
+            
+        };
+        
+        vertex VertexOutRenderToCube vertexRenderToCube(VertexIn in [[stage_in]],
+                                                        constant FrameConstants* frameConstants [[buffer(vertexBufferIDs::frameConstantsBuffer)]],
+                                                        // if this is a skymap then
+                                                        // we do not need model transforms
+                                                        constant InstanceConstants* instantConstant [[buffer(vertexBufferIDs::instanceConstantsBuffer),function_constant(no_texture)]],
+                                                        constant simd_float4* out_colour [[buffer(vertexBufferIDs::colour),function_constant(no_texture)]],
+                                                        ushort amp_index [[amplification_id]],
+                                                        uint instance_index [[instance_id]]
+                                                        ){
+            
+            if(no_texture){
+                VertexOutRenderToCube out;
+                out.slice = amp_index;
+                out.colour = out_colour[instance_index];
+                simd_float4x4 modelMatrix = instantConstant[instance_index].modelMatrix;
+                simd_float4 worldPos = modelMatrix * in.pos;
+                
+                simd_float4x4 viewMatrix = frameConstants[amp_index].viewMatrix;
+                simd_float4x4 projectionMatrix = frameConstants[amp_index].projectionMatrix;
+                out.pos = projectionMatrix * viewMatrix * worldPos;
+                return out;
+                
+            }
+            else{
+                VertexOutRenderToCube out;
+                out.slice = amp_index;
+                out.worldPos = normalize(in.pos.xyz);
+                simd_float4x4 viewMatrix = frameConstants[amp_index].viewMatrix;
+                simd_float4x4 projectionMatrix = frameConstants[amp_index].projectionMatrix;
+                // kill the translation part of the view matrix
+                viewMatrix.columns[3] = simd_float4(0,0,0,1);
+                simd_float4 pos = projectionMatrix * viewMatrix * in.pos;
+                pos.z = pos.w;
+                out.pos = pos;
+                return out;
+            }
+            
+        }
+        
+        fragment float4 fragmentRenderToCube(VertexOutRenderToCube in [[stage_in]],
+                                             texturecube<float> CubeMap [[texture(textureIDs::cubeMap),function_constant(cube)]]
+                                             ){
+            
+            if(cube){
+                constexpr sampler cubeMapSampler(coord::normalized,
+                                                 address::clamp_to_edge,
+                                                 filter::linear
+                                                 );
+                return CubeMap.sample(cubeMapSampler, in.worldPos);
+            }
+            else{
+                return in.colour;
+            }
+        }
+        
+        
+        vertex VertexOut vertexRenderCubeReflection(VertexIn in [[stage_in]],
+                                                    constant FrameConstants& frameConstant [[buffer(vertexBufferIDs::frameConstantsBuffer)]],
+                                                    constant InstanceConstants* instanceConstant
+                                                    [[buffer(vertexBufferIDs::instanceConstantsBuffer)]],
+                                                    uint instance_index [[instance_id]]
+                                                    ){
+            VertexOut out;
+            simd_float4x4 modelMatrix = instanceConstant[instance_index].modelMatrix;
+            simd_float4x4 viewMatrix = frameConstant.viewMatrix;
+            simd_float4x4 projectionMatrix = frameConstant.projectionMatrix;
+            
+            out.world_pos = (modelMatrix * in.pos).xyz;
+            out.world_normal = normalize((modelMatrix * simd_float4(in.normal.xyz,0)).xyz);
+            
+            out.pos = projectionMatrix * viewMatrix * simd_float4(out.world_pos,1);
+            
+            return out;
+        }
+        
+        fragment float4 fragmentRenderCubeReflection(VertexOut in [[stage_in]],
+                                               constant simd_float3& eye [[buffer(0)]],
+                                               texturecube<float> cubeMap [[texture(textureIDs::cubeMap)]]){
+            
+            constexpr sampler cubeMapSampler(coord::normalized,
+                                             address::clamp_to_edge,
+                                             filter::linear
+                                             );
+            
+            simd_float3 incident_vector = normalize(in.world_pos - eye);
+            simd_float3 reflection_vector = reflect(incident_vector, normalize(in.world_normal));
+            reflection_vector.y *= -1.0;
+            
+            //return float4(1,0,0,1);
+            return cubeMap.sample(cubeMapSampler, reflection_vector);
+            
+            
+        }
+        
+        vertex VertexOut vertexSimpleShader(VertexIn in [[stage_in]],
+                                            constant FrameConstants& frameConstant [[buffer(vertexBufferIDs::frameConstantsBuffer)]],
+                                            device InstanceConstants* instantConstants [[buffer(vertexBufferIDs::instanceConstantsBuffer)]],
+                                            device simd_float4* colour_out [[buffer(vertexBufferIDs::colour)]],
+                                            uint instance_index [[instance_id]]
+                                            ){
+            VertexOut out;
+            
+            simd_float4x4 modelMatrix = instantConstants[instance_index].modelMatrix;
+            simd_float4x4 viewMatrix = frameConstant.viewMatrix;
+            simd_float4x4 projectionMatrix = frameConstant.projectionMatrix;
+            
+            out.pos = projectionMatrix * viewMatrix * in.pos;
+            out.colour = colour_out[instance_index];
+            
+            return out;
+            
+        }
+        
+        fragment float4 fragmentSimpleShader (VertexOut in [[stage_in]]){
+            
+            return in.colour;
+        }

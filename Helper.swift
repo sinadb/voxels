@@ -627,6 +627,10 @@ class Mesh{
       
     }
     
+    func addUniformBuffer(buffer : UniformBuffer){
+        BufferArray.append(buffer)
+    }
+    
 
 
     
@@ -833,17 +837,26 @@ class pipeLine {
             return nil
         }
     }
-    init?(_ device : MTLDevice, _ vertexFunctionName : String, _ fragmentFunctionName : String?, _ vertexDescriptor : MTLVertexDescriptor,  _ renderToCube : Bool, amplificationCount : Int = 1, colourPixelFormat : MTLPixelFormat = .bgra8Unorm_srgb, depthPixelFormat : MTLPixelFormat = .depth32Float, label : String = "nolable"){
+    init?(_ device : MTLDevice, _ vertexFunctionName : String, _ fragmentFunctionName : String?, _ vertexDescriptor : MTLVertexDescriptor,  _ renderToCube : Bool, amplificationCount : Int = 1, functionConstant : MTLFunctionConstantValues? = nil, colourPixelFormat : MTLPixelFormat = .bgra8Unorm_srgb, depthPixelFormat : MTLPixelFormat = .depth32Float, label : String = "nolabel"){
         
         library = device.makeDefaultLibrary()!
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
         pipelineDescriptor.maxVertexAmplificationCount = amplificationCount
         pipelineDescriptor.colorAttachments[0].pixelFormat = colourPixelFormat
         pipelineDescriptor.depthAttachmentPixelFormat = depthPixelFormat
-        pipelineDescriptor.vertexFunction = library.makeFunction(name: vertexFunctionName)
-        if let fragmentAddress = fragmentFunctionName{
-            pipelineDescriptor.fragmentFunction = library.makeFunction(name: fragmentAddress)
+        if let functionConstantValues = functionConstant {
+            pipelineDescriptor.vertexFunction = try! library.makeFunction(name: vertexFunctionName,constantValues: functionConstantValues)
+            if let fragmentAddress = fragmentFunctionName{
+                pipelineDescriptor.fragmentFunction = try! library.makeFunction(name: fragmentAddress, constantValues: functionConstantValues)
+            }
         }
+        else{
+            pipelineDescriptor.vertexFunction = library.makeFunction(name: vertexFunctionName)
+            if let fragmentAddress = fragmentFunctionName{
+                pipelineDescriptor.fragmentFunction = library.makeFunction(name: fragmentAddress)
+            }
+        }
+       
         
         pipelineDescriptor.vertexDescriptor = vertexDescriptor
         if(renderToCube){
