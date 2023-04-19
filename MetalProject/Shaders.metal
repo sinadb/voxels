@@ -1012,7 +1012,7 @@ enum class textureIDs : int {
             simd_float4x4 viewMatrix = frameConstant.viewMatrix;
             simd_float4x4 projectionMatrix = frameConstant.projectionMatrix;
             
-            out.pos = projectionMatrix * viewMatrix * in.pos;
+            out.pos = projectionMatrix * viewMatrix * modelMatrix * in.pos;
             out.colour = colour_out[instance_index];
             
             return out;

@@ -72,9 +72,7 @@ class skyBoxScene {
     var False = false
     var True = true
     var centreOfReflection : simd_float3
-    var camera : simd_float4x4
-    var eye : simd_float3
-    var direction : simd_float3
+    var camera : Camera
     var projection : simd_float4x4
     var nodes = [Mesh]()
     var skyBoxMesh : Mesh
@@ -105,7 +103,6 @@ class skyBoxScene {
     var view : MTKView
     var depthStencilState : MTLDepthStencilState
     var sampler : MTLSamplerState
-    var cameras = [simd_float4x4]()
     var sceneCamera : Camera?
 
 
@@ -168,12 +165,10 @@ class skyBoxScene {
         renderTarget = Texture(texture: renderTargetTexture!, index: textureIDs.cubeMap)
     }
 
-    init(device : MTLDevice, at view : MTKView, from centreOfReflection: simd_float3, eye : simd_float3, direction : simd_float3, with projection : simd_float4x4) {
+    init(device : MTLDevice, at view : MTKView, from centreOfReflection: simd_float3, attachTo camera : Camera, with projection : simd_float4x4) {
         self.device = device
         self.centreOfReflection = centreOfReflection
-        self.camera = simd_float4x4(eye: eye, center: direction + eye, up: simd_float3(0,1,0))
-        self.eye = eye
-        self.direction = direction
+        self.camera = camera
         self.projection = projection
         commandQueue = device.makeCommandQueue()!
         self.view = view
@@ -195,7 +190,7 @@ class skyBoxScene {
         sampler = device.makeSamplerState(descriptor: samplerDescriptor)!
         
         
-        frameConstants = FrameConstants(viewMatrix: self.camera, projectionMatrix: projection)
+        frameConstants = FrameConstants(viewMatrix: self.camera.cameraMatrix, projectionMatrix: projection)
         
         let allocator = MTKMeshBufferAllocator(device: device)
         let cubeMDLMesh = MDLMesh(boxWithExtent: simd_float3(1,1,1), segments: simd_uint3(1,1,1), inwardNormals: false, geometryType: .triangles, allocator: allocator)
@@ -250,11 +245,9 @@ class skyBoxScene {
     func addReflectiveNode(mesh : Mesh){
         
         reflectiveNodeMesh = mesh
-        let modelMatrix = create_modelMatrix(rotation: simd_float3(0), translation: centreOfReflection, scale: simd_float3(1))
+        let modelMatrix = create_modelMatrix(rotation: simd_float3(0), translation: centreOfReflection, scale: simd_float3(3))
         reflectiveNodeMesh?.createInstance(with: modelMatrix)
-        reflectiveNodeMesh?.init_instance_buffers(with: self.camera)
-        let frameConstantBuffer = device.makeBuffer(bytes: &frameConstants, length: MemoryLayout<FrameConstants>.stride,options: [])
-        reflectiveNodeMesh?.addUniformBuffer(buffer: UniformBuffer(buffer: frameConstantBuffer!, index: vertexBufferIDs.frameConstant))
+        reflectiveNodeMesh?.init_instance_buffers(with: self.camera.cameraMatrix)
         reflectiveNodeMesh?.add_textures(texture: renderTarget!)
      
     }
@@ -266,6 +259,8 @@ class skyBoxScene {
 
 
     func renderScene(){
+        
+        frameConstants.viewMatrix = camera.cameraMatrix
 
 //        fps += 1
           guard let commandBuffer = commandQueue.makeCommandBuffer() else {return}
@@ -336,9 +331,15 @@ class skyBoxScene {
         finalRenderEncoder.setFrontFacing(.counterClockwise)
         
         finalRenderEncoder.setRenderPipelineState(renderReflectionPipleline!.m_pipeLine)
-        finalRenderEncoder.setFragmentBytes(&self.eye, length: 16, index: 0)
+        finalRenderEncoder.setVertexBytes(&frameConstants, length: MemoryLayout<FrameConstants>.stride, index: vertexBufferIDs.frameConstant)
+        finalRenderEncoder.setFragmentBytes(&self.camera.eye, length: 16, index: 0)
         reflectiveNodeMesh?.draw(renderEncoder: finalRenderEncoder,with: 1, culling: .back)
 //
+        
+        finalRenderEncoder.setRenderPipelineState(simplePipeline!.m_pipeLine)
+        for mesh in nodes {
+            mesh.draw(renderEncoder: finalRenderEncoder,culling: .back)
+        }
 //        finalRenderEncoder.setRenderPipelineState(renderReflectionPipleline_noFuzzy!.m_pipeLine)
 //        finalRenderEncoder.setDepthStencilState(depthStencilState)
 //        finalRenderEncoder.setFragmentSamplerState(sampler, index: 0)
@@ -363,7 +364,7 @@ class skyBoxScene {
 //        }
 
         finalRenderEncoder.setRenderPipelineState(renderSkyboxPipeline!.m_pipeLine)
-        finalRenderEncoder.setVertexBytes(&frameConstants, length: MemoryLayout<FrameConstants>.stride, index: vertexBufferIDs.frameConstant)
+       // finalRenderEncoder.setVertexBytes(&frameConstants, length: MemoryLayout<FrameConstants>.stride, index: vertexBufferIDs.frameConstant)
         
         skyBoxMesh.draw(renderEncoder: finalRenderEncoder, with: 1, culling: .front)
 
@@ -735,7 +736,7 @@ class Renderer : NSObject, MTKViewDelegate {
         MeshesToBeRenderedToCube = Mesh(device: device, Mesh: circleMDLMesh)!
         
         
-        let modelMatrix = create_modelMatrix(rotation: simd_float3(0), translation: simd_float3(0,0,-20), scale: simd_float3(3))
+        let modelMatrix = create_modelMatrix(rotation: simd_float3(0), translation: simd_float3(0,0,-15), scale: simd_float3(3))
         
         
         MeshesToBeRenderedToCube.createInstance(with: modelMatrix, and: simd_float4(0,1,0,1))
@@ -759,8 +760,10 @@ class Renderer : NSObject, MTKViewDelegate {
         colourRenderTarget = device.makeTexture(descriptor: textureDescriptor)!
         depthRenderTarget = device.makeTexture(descriptor: textureDescriptorDepth)!
         
+        var skyCamera = Camera(for: mtkView, eye: simd_float3(0,0,-10), centre: simd_float3(0,0,1))
+        cameraLists.append(skyCamera)
         
-        SkyScene = skyBoxScene(device: device, at: mtkView, from: simd_float3(0,0,-5), eye: simd_float3(0,0,-10), direction: simd_float3(0,0,1), with: projectionMatrix)
+        SkyScene = skyBoxScene(device: device, at: mtkView, from: simd_float3(0,0,0), attachTo: skyCamera, with: projectionMatrix)
         SkyScene.setSkyMapTexture(with: Texture(texture: skyTexture, index: textureIDs.cubeMap))
         SkyScene.addNodes(mesh: MeshesToBeRenderedToCube)
         
