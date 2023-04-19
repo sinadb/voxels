@@ -183,6 +183,9 @@ class Mesh{
     var has_displacement = false
     var cullFace : MTLCullMode?
     
+    var scaleInitialState = [Float]()
+    var translationInitialState = [simd_float3]()
+    
     
     init?(device : MTLDevice, Mesh : MDLMesh,  with label : String = "NoLabel"){
         self.device = device
@@ -530,15 +533,13 @@ class Mesh{
     
 
     
-    func rotateMesh(with newModelMatrix : [simd_float4x4], and viewMatrix : simd_float4x4){
+    func rotateMesh(with rotation : simd_float3, and viewMatrix : simd_float4x4){
         var ptr = BufferArray[0].buffer.contents().bindMemory(to: InstanceConstants.self, capacity: no_instances)
-       
-        
         for i in 0..<no_instances{
-            let normalMatrix = create_normalMatrix(modelViewMatrix: viewMatrix * newModelMatrix[i])
-            
+            let modelMatrix = create_modelMatrix(rotation: rotation, translation: translationInitialState[i], scale: simd_float3(1))
+            let normalMatrix = create_normalMatrix(modelViewMatrix: viewMatrix * modelMatrix)
             (ptr + i).pointee.normalMatrix = normalMatrix
-            (ptr + i).pointee.modelMatrix = newModelMatrix[i]
+            (ptr + i).pointee.modelMatrix = modelMatrix
             
         }
     }
@@ -561,6 +562,9 @@ class Mesh{
      
         no_instances += 1
         
+        let translateColumn = modelMatrix.columns.3
+        translationInitialState.append(simd_float3(translateColumn.x,translateColumn.y,translateColumn.z))
+        
       
 //        let normalMatrix = create_normalMatrix(modelViewMatrix: camera.cameraMatrix * modelMatrix)
 //
@@ -579,14 +583,14 @@ class Mesh{
        
     }
     
-    func updateNormalMatrixAfterCameraChanged(){
+    func updateNormalMatrix(with viewMatrix : simd_float4x4){
         
         var ptr = BufferArray[0].buffer.contents().bindMemory(to: InstanceConstants.self, capacity: no_instances)
         
        
         
         for i in 0..<no_instances{
-            let normalMatrix = create_normalMatrix(modelViewMatrix: MeshCamera!.cameraMatrix * (ptr + i).pointee.modelMatrix)
+            let normalMatrix = create_normalMatrix(modelViewMatrix: viewMatrix * (ptr + i).pointee.modelMatrix)
             
             (ptr + i).pointee.normalMatrix = normalMatrix
            

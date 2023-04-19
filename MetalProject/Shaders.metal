@@ -1002,16 +1002,21 @@ enum class textureIDs : int {
         
         vertex VertexOut vertexSimpleShader(VertexIn in [[stage_in]],
                                             constant FrameConstants& frameConstant [[buffer(vertexBufferIDs::frameConstantsBuffer)]],
-                                            device InstanceConstants* instantConstants [[buffer(vertexBufferIDs::instanceConstantsBuffer)]],
+                                            device InstanceConstants* instanceConstants [[buffer(vertexBufferIDs::instanceConstantsBuffer)]],
                                             device simd_float4* colour_out [[buffer(vertexBufferIDs::colour)]],
                                             uint instance_index [[instance_id]]
                                             ){
+            
+            
+            
             VertexOut out;
             
-            simd_float4x4 modelMatrix = instantConstants[instance_index].modelMatrix;
+            simd_float4x4 modelMatrix = instanceConstants[instance_index].modelMatrix;
+            simd_float4x4 normalMatrix = instanceConstants[instance_index].normalMatrix;
             simd_float4x4 viewMatrix = frameConstant.viewMatrix;
             simd_float4x4 projectionMatrix = frameConstant.projectionMatrix;
-            
+            out.eye_normal = normalize((normalMatrix * in.normal).xyz);
+            out.eye_pos = (viewMatrix * in.pos).xyz;
             out.pos = projectionMatrix * viewMatrix * modelMatrix * in.pos;
             out.colour = colour_out[instance_index];
             
@@ -1019,7 +1024,23 @@ enum class textureIDs : int {
             
         }
         
-        fragment float4 fragmentSimpleShader (VertexOut in [[stage_in]]){
+        fragment float4 fragmentSimpleShader (VertexOut in [[stage_in]],
+                                              constant simd_float3& directionalLight [[buffer(vertexBufferIDs::lightPos)]]
+                                              ){
             
-            return in.colour;
+            float ambientFactor = 0.1;
+            float specularExponent = 150;
+            float finalLightingFactor = ambientFactor;
+            
+            
+            
+            simd_float3 L = normalize(directionalLight);
+            simd_float3 V = normalize(-in.eye_pos);
+            simd_float3 H = normalize(L + V);
+            
+            float diffuseFactor = saturate(dot(L,in.eye_normal));
+            float specularFactor = powr(saturate(dot(in.eye_normal, H)), specularExponent) * 10;
+            finalLightingFactor += specularFactor + diffuseFactor;
+            
+            return simd_float4(in.colour.rgb * finalLightingFactor, 1);
         }

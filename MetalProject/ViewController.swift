@@ -101,6 +101,7 @@ class ViewController: NSViewController {
         let pos = simd_float2(Float(event.locationInWindow.x),Float(event.locationInWindow.y))
         for camera in renderer.cameraLists{
             camera.update_mouse(with: pos)
+            renderer.SkyScene.cameraChanged = true
 
         }
     }
@@ -128,11 +129,13 @@ class ViewController: NSViewController {
             if(renderer.adjustSceneCamera){
                 for camera in renderer.cameraLists{
                     camera.update_eye(with: simd_float3(0,1,0))
+                    renderer.SkyScene.cameraChanged = true
                 }
             }
             else {
                 for camera in renderer.lightCameraLists {
                     camera.update_eye(with: simd_float3(0,1,0))
+                    
                 }
             }
             break
@@ -140,6 +143,7 @@ class ViewController: NSViewController {
             if(renderer.adjustSceneCamera){
                 for camera in renderer.cameraLists{
                     camera.update_eye(with: simd_float3(0,-1,0))
+                    renderer.SkyScene.cameraChanged = true
                 }
             }
             else {
@@ -152,6 +156,7 @@ class ViewController: NSViewController {
             if(renderer.adjustSceneCamera){
                 for camera in renderer.cameraLists{
                     camera.update_eye(with: simd_float3(-1,0,0))
+                    renderer.SkyScene.cameraChanged = true
                 }
             }
             else {
@@ -164,6 +169,7 @@ class ViewController: NSViewController {
             if(renderer.adjustSceneCamera){
                 for camera in renderer.cameraLists{
                     camera.update_eye(with: simd_float3(1,0,0))
+                    renderer.SkyScene.cameraChanged = true
                 }
             }
             else {
@@ -176,6 +182,7 @@ class ViewController: NSViewController {
             if(renderer.adjustSceneCamera){
                 for camera in renderer.cameraLists{
                     camera.update_eye(with: simd_float3(0,0,1))
+                    renderer.SkyScene.cameraChanged = true
                 }
             }
             else {
@@ -188,6 +195,7 @@ class ViewController: NSViewController {
             if(renderer.adjustSceneCamera){
                 for camera in renderer.cameraLists{
                     camera.update_eye(with: simd_float3(0,0,-1))
+                    renderer.SkyScene.cameraChanged = true
                 }
             }
             else {
