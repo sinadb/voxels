@@ -166,6 +166,7 @@ class skyBoxScene {
         textureDescriptor.width = 1200
         textureDescriptor.height = 1200
         textureDescriptor.storageMode = .private
+        textureDescriptor.mipmapLevelCount = 8
         textureDescriptor.usage = [.shaderRead,.renderTarget]
         var renderTargetTexture = device.makeTexture(descriptor: textureDescriptor)
         textureDescriptor.pixelFormat = .depth32Float
@@ -296,7 +297,7 @@ class skyBoxScene {
         
         
         for mesh in nodes {
-            //mesh.rotateMesh(with: simd_float3(0,Float(fps)*0.2,0), and: camera.cameraMatrix)
+            mesh.rotateMesh(with: simd_float3(0,Float(fps)*0.2,0), and: camera.cameraMatrix)
             mesh.draw(renderEncoder: renderEncoder)
         }
         
@@ -304,6 +305,10 @@ class skyBoxScene {
         skyBoxMesh.draw(renderEncoder: renderEncoder, with: 1)
         
         renderEncoder.endEncoding()
+        
+        guard let mipRenderEncoder = commandBuffer.makeBlitCommandEncoder() else {return}
+        mipRenderEncoder.generateMipmaps(for: renderTarget!.texture)
+        mipRenderEncoder.endEncoding()
         
         
         
@@ -353,32 +358,7 @@ class skyBoxScene {
 
 
 
-func sort(array : inout [simd_float4]) -> [simd_float3]{
-    let boundx = array.sorted(){ $0[0] < $1[0]}
-    let boundy = array.sorted(){ $0[1] < $1[1]}
-    let boundz =  array.sorted(){ $0[2] < $1[2]}
-    let minx = boundx.first!.x
-    let maxx = boundx.last!.x
-    let miny = boundy.first!.y
-    let maxy = boundy.last!.y
-    let minz = boundz.first!.z
-    let maxz = boundz.last!.z
-    return [simd_float3(minx,miny,minz),simd_float3(maxx,maxy,maxz)]
-}
 
-
-func findBounds(array : inout [simd_float4], light : Camera) -> simd_float4x4{
-    var eyeBounds = array.map{ light.cameraMatrix * $0}
-    let eyeMinMax = sort(array: &eyeBounds)
-    let left = eyeMinMax.first!.x - 1.1
-    let right = eyeMinMax.last!.x + 1.1
-    let bottom = eyeMinMax.first!.y - 1.1
-    let top = eyeMinMax.last!.y + 1.1
-    let near = -(eyeMinMax.last!.z + 1.1 )
-    let far = -(eyeMinMax.first!.z - 1.1 )
-    return simd_float4x4(orthoWithLeft: left, right: right, bottom: bottom, top: top, near: near, far: far)
-    
-}
 
 
 
@@ -393,77 +373,14 @@ class Renderer : NSObject, MTKViewDelegate {
     var True = true
     var False = false
    
-    var fps = 0
-    var sampler : MTLSamplerState?
-    var depthStencilState : MTLDepthStencilState?
-    
-    
-    
-
-    
-   
    
     let device: MTLDevice
     let commandQueue : MTLCommandQueue
-    var simplePipeline : pipeLine?
-    
-    
- 
-    
-  
-    
-    var tesselationPipelineState : MTLRenderPipelineState?
-    var tesselateWall : Mesh?
-    var FlowerImage : MTLTexture?
-    var cameraLists = [Camera]()
-    var lightCameraLists = [Camera]()
-    
-    
-   
-    var wallVB : [Float] = [
-        -1,-1,0,1, 0,0,1, 0,0, 1,0,0,1, 0,1,0,1,
-         -1,1,0,1, 0,0,1, 0,1, 1,0,0,1, 0,1,0,1,
-         1,1,0,1, 0,0,1, 1,1, 1,0,0,1, 0,1,0,1,
-         1,-1,0,1, 0,0,1, 1,0, 1,0,0,1, 0,1,0,1
-    ]
-    var wallIB : [uint16] = [
-        0,1,2,
-        0,2,3
-    ]
-    
-    var wallVertexBuffer : MTLBuffer?
-    var wallIndexBuffer : MTLBuffer?
-    var testSlicesRenderingPipeline : pipeLine?
-    var testTextureArray : MTLTexture?
-    var testDepthTextureArray : MTLTexture?
-    var renderSlicePipeline : pipeLine?
-    
     var spheresMesh : Mesh?
     var CubeMesh : Mesh?
-    var frameConstant : FrameConstants
-    var testCamera : Camera
-    var initialState = [[simd_float3]]()
-    
-    
-    
-    
-    var shadowScene : shadowMapScene?
-    
-   
-    var adjustSceneCamera = true
-    var testShadowScene : shadowMapScene
-    
-    
-    var skyboxpipeline : pipeLine
     var skyTexture : MTLTexture
-    
-    var renderToCubePipelineColouredMesh : pipeLine
-    var renderToCubePipelineSkyBox : pipeLine
-    
-    var MeshesToBeRenderedToCube : Mesh
-    var colourRenderTarget : MTLTexture
-    var depthRenderTarget : MTLTexture
     var SkyScene : skyBoxScene
+    var cameraLists = [Camera]()
     
     
     
@@ -472,183 +389,21 @@ class Renderer : NSObject, MTKViewDelegate {
     init?(mtkView: MTKView){
       
        
-        
-        let rotate = simd_float4x4(rotationX: 90)
-        print(rotate*simd_float4(-1,0,-1,1))
-        
         device = mtkView.device!
         mtkView.preferredFramesPerSecond = 120
-        
         commandQueue = device.makeCommandQueue()!
-        
         mtkView.colorPixelFormat = .bgra8Unorm_srgb
         mtkView.depthStencilPixelFormat = .depth32Float
         
        
-        let flatTextureLoaderOptions : [MTKTextureLoader.Option : Any] = [
-            .textureUsage : MTLTextureUsage.shaderRead.rawValue,
-            .textureStorageMode : MTLStorageMode.private.rawValue,
-            .origin : MTKTextureLoader.Origin.bottomLeft.rawValue,
-           
-                
-        ]
-        
-        let textureLoader = MTKTextureLoader(device: device)
-       
-        let BrickWall = try! textureLoader.newTexture(name: "BrickWallD", scaleFactor: 1.0, bundle: nil, options: flatTextureLoaderOptions)
-            
-      
-        let BrickWallTexture = Texture(texture: BrickWall, index: textureIDs.flat)
-        
-        let flatTextureLoaderOptionsN : [MTKTextureLoader.Option : Any] = [
-            .textureUsage : MTLTextureUsage.shaderRead.rawValue,
-            .textureStorageMode : MTLStorageMode.private.rawValue,
-            .origin : MTKTextureLoader.Origin.bottomLeft.rawValue,
-            .SRGB : False
-           
-                
-        ]
-        
-        let BrickWallN = try! textureLoader.newTexture(name: "BrickWallN", scaleFactor: 1.0, bundle: nil, options: flatTextureLoaderOptionsN)
-        
-        let BrickWallTextureN = Texture(texture: BrickWallN, index: textureIDs.Normal)
-      
-        // render a simple cube with colour pipeline
-      
-        
-
         
         let allocator = MTKMeshBufferAllocator(device: device)
         let planeMDLMesh = MDLMesh(planeWithExtent: simd_float3(1,1,1), segments: simd_uint2(1,1), geometryType: .triangles, allocator: allocator)
         let cubeMDLMesh = MDLMesh(boxWithExtent: simd_float3(1,1,1), segments: simd_uint3(1,1,1), inwardNormals: false, geometryType: .triangles, allocator: allocator)
         let circleMDLMesh = MDLMesh(sphereWithExtent: simd_float3(1,1,1), segments: simd_uint2(30,30), inwardNormals: False, geometryType: .triangles, allocator: allocator)
         let coneMDLMesh = MDLMesh(coneWithExtent: simd_float3(1,1,1), segments: simd_uint2(100,100), inwardNormals: False, cap: False, geometryType: .triangles, allocator: allocator)
-       
-    
-//        cubeMDLMesh.vertexDescriptor = mdlMeshVD
-//        circleMDLMesh.vertexDescriptor = mdlMeshVD
-//        planeMDLMesh.vertexDescriptor = mdlMeshVD
-//        coneMDLMesh.vertexDescriptor = mdlMeshVD
-        
       
- 
-
-       
-       
-   
-        let samplerDC = MTLSamplerDescriptor()
-        samplerDC.magFilter = .nearest
-        samplerDC.minFilter = .nearest
-        samplerDC.rAddressMode = .clampToEdge
-        samplerDC.sAddressMode = .clampToEdge
-        samplerDC.tAddressMode = .clampToEdge
-        samplerDC.normalizedCoordinates = true
-        
-        sampler = device.makeSamplerState(descriptor: samplerDC)!
-        
-        let depthState = MTLDepthStencilDescriptor()
-        depthState.depthCompareFunction = .lessEqual
-        depthState.isDepthWriteEnabled = true
-        depthStencilState = device.makeDepthStencilState(descriptor: depthState)
-        
-      
-
      
-        
-        
-     
-        testCamera = Camera(for: mtkView, eye: simd_float3(0,0,10), centre: simd_float3(0,0,-1))
-        
-        cameraLists.append(testCamera)
-     
-        
-        spheresMesh = Mesh(device: device, Mesh: circleMDLMesh ,with: "Circle Mesh")
-        let coneMesh = Mesh(device: device, Mesh: coneMDLMesh, with: "Cone Mesh")
-        coneMesh?.is_shadow_caster = true
-        spheresMesh?.is_shadow_caster = true
-        
-        let projectionMatrix = simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2.0, near: 1.0, far: 100)
-        
-        frameConstant = FrameConstants(viewMatrix: testCamera.cameraMatrix, projectionMatrix: projectionMatrix)
-       
-        let houseMesh = Mesh(device: device, Mesh: cubeMDLMesh)
-        //houseMesh?.is_shadow_caster = true
-        let houseModelMatrix = create_modelMatrix(translation: simd_float3(0,0,0), rotation: simd_float3(0), scale: simd_float3(10))
-        houseMesh?.createInstance(with: houseModelMatrix, and: simd_float4(0.5,0.5,0.5,1))
-        houseMesh?.setCullModeForMesh(side: .back)
-
-        var boundsArray = [simd_float4]()
-       // boundsArray.append(simd_float4(-5,-5,5,1))
-       // boundsArray.append(simd_float4(5,5,-5,1))
-        let n = 9
-        for i in 0..<n{
-            
-            
-            let theta = Float(i) * Float(6.28 / Float(n))
-                    let x_r : Float = 4 * cos(theta)
-                    let y_r : Float = 0
-                    let z_r : Float = 4 * sin(theta)
-
-                    let c_r = Float.random(in: 0...1)
-                    let c_g = Float.random(in: 0...1)
-                    let c_b = Float.random(in: 0...1)
-                    let scale = Float.random(in: 0.1...0.4)
-            
-                    let minBound = simd_float4(x_r,y_r,z_r,1) - simd_float4(scale,scale,scale,0)
-                    let maxbound = simd_float4(x_r,y_r,z_r,1) + simd_float4(scale,scale,scale,0)
-            boundsArray.append(minBound)
-            boundsArray.append(maxbound)
-
-            let modelMatrix = create_modelMatrix(translation: simd_float3(x_r,y_r,z_r), rotation: simd_float3(0), scale: simd_float3(0.5))
-
-
-
-                    spheresMesh?.createInstance(with: modelMatrix, and: simd_float4(c_r,c_g,c_b,1))
-            
-           
-        }
-        
-      
-       
-      
-        
-        
-            
-        
-
-   
-      
-        
-        var shadowCamera = Camera(for: mtkView, eye: simd_float3(0,0,0), centre: simd_float3(-1,0,0))
-        var shadowCamera1 = Camera(for: mtkView, eye: simd_float3(0,0,0), centre: simd_float3(-1,-1,0))
-        var orthoProjection = findBounds(array: &boundsArray, light: shadowCamera)
-        var orthoProjection1 = findBounds(array: &boundsArray, light: shadowCamera1)
-        
-        var testArray = [simd_float4(-1,-1,1,1),simd_float4(1,1,-1,1)]
-        let testOrtho = findBounds(array: &testArray, light: shadowCamera)
-        //let testResult = testArray.map {testOrtho * shadowCamera.cameraMatrix * $0}
-        //print(testOrtho * shadowCamera.cameraMatrix * simd_float4(-5,-5,5,1))
-        
-        let result = boundsArray.map{orthoProjection * shadowCamera.cameraMatrix * $0}
-        //print(result)
-        
-        testShadowScene = shadowMapScene(device: device, projectionMatrix: projectionMatrix, attachTo: testCamera)
-        
-  
-        testShadowScene.addDirectionalLight(lightCamera: shadowCamera, with: orthoProjection)
-        testShadowScene.addDirectionalLight(lightCamera: shadowCamera1, with: orthoProjection1)
-        
-        testShadowScene.initShadowMap()
-        testShadowScene.addDrawable(mesh: houseMesh!)
-        testShadowScene.addDrawable(mesh: spheresMesh!)
-        
-        
-
-        wallVertexBuffer = device.makeBuffer(bytes: &wallVB, length: MemoryLayout<Float>.stride*17*4,options: [])
-        wallIndexBuffer = device.makeBuffer(bytes: &wallIB, length: MemoryLayout<uint16>.stride*6,options: [])
-        let VD = generalVertexDescriptor()
-        print("creating test Pipeline")
-        testSlicesRenderingPipeline = pipeLine(device, "test_shader_vertex", "test_shader_fragment", VD, true, amplificationCount: 3)
        
        
         
@@ -657,45 +412,18 @@ class Renderer : NSObject, MTKViewDelegate {
     
         
         
+       
         
-        testShadowScene.addPointLight(position: simd_float3(0))
-        print("creating point shadow pipeline")
-        testShadowScene.init_pointShadowMapPipeline()
-        testShadowScene.init_pointShadowRenderTargets()
-        
-        skyboxpipeline = pipeLine(device, "vertexRenderSkyBox", "fragmentRenderSkyBox", VD, false, label: "SkyboxPipeline")!
-        CubeMesh = Mesh(device: device, Mesh: cubeMDLMesh)
-        
-        let cubeTextureOptions: [MTKTextureLoader.Option : Any] = [
-          .textureUsage : MTLTextureUsage.shaderRead.rawValue,
-          .textureStorageMode : MTLStorageMode.private.rawValue,
-          .cubeLayout : MTKTextureLoader.CubeLayout.vertical,
-          .SRGB : true
-          
-        ]
-        
-        skyTexture = try! textureLoader.newTexture(name: "SkyMap", scaleFactor: 1.0, bundle: nil, options: cubeTextureOptions)
-        
-        CubeMesh?.add_textures(texture: Texture(texture: skyTexture, index: textureIDs.cubeMap))
+       
         
         var skyBoxCamera = Camera(for: mtkView, eye: simd_float3(0), centre: simd_float3(0,0,1))
         cameraLists.append(skyBoxCamera)
         
         
-        let FC = functionConstant()
-        FC.setValue(type: .bool, value: &True, at: FunctionConstantValues.constant_colour)
-        FC.setValue(type: .bool, value: &False, at: FunctionConstantValues.cube)
+        var cube = Mesh(device: device, Mesh: cubeMDLMesh)!
+        var spheres = Mesh(device: device, Mesh: circleMDLMesh)!
         
-        renderToCubePipelineColouredMesh = pipeLine(device, "vertexRenderToCube", "fragmentRenderToCube", VD, true,amplificationCount: 6,functionConstant: FC.functionConstant,label: "RenderToCubePipeline")!
-        
-        FC.setValue(type: .bool, value: &False, at: FunctionConstantValues.constant_colour)
-        FC.setValue(type: .bool, value: &True, at: FunctionConstantValues.cube)
-        
-        renderToCubePipelineSkyBox = pipeLine(device, "vertexRenderToCube", "fragmentRenderToCube", VD, true,amplificationCount: 6,functionConstant: FC.functionConstant,label: "RenderToCubePipeline")!
-        
-        MeshesToBeRenderedToCube = Mesh(device: device, Mesh: circleMDLMesh)!
-        
-        for i in 0..<1000 {
+        for i in 0..<100 {
             
             var x_r = Float.random(in: -20 ... 20)
             var y_r = Float.random(in: -20 ... 20)
@@ -708,61 +436,48 @@ class Renderer : NSObject, MTKViewDelegate {
             let c_b = Float.random(in: 0...1)
             
             let modelMatrix = create_modelMatrix(rotation: simd_float3(0), translation: simd_float3(x_r,y_r,z_r), scale: simd_float3(1))
+            
+            if(i < 50){
+                spheres.createInstance(with: modelMatrix, and: simd_float4(c_r,c_g,c_b,1))
+
+            }
+            else{
+                cube.createInstance(with: modelMatrix, and: simd_float4(c_r,c_g,c_b,1))
+
+            }
                     
-            MeshesToBeRenderedToCube.createInstance(with: modelMatrix, and: simd_float4(c_r,c_g,c_b,1))
             
         }
         
-//        for i in 0..<50 {
-//
-//            let x_r = Float.random(in: 5 ... 20)
-//            let y_r = Float.random(in: 5 ... 20)
-//            let z_r = Float.random(in: 5 ... 20)
-//
-//            let c_r = Float.random(in: 0...1)
-//            let c_g = Float.random(in: 0...1)
-//            let c_b = Float.random(in: 0...1)
-//
-//            let modelMatrix = create_modelMatrix(rotation: simd_float3(0), translation: simd_float3(x_r,y_r,z_r), scale: simd_float3(1))
-//
-//            MeshesToBeRenderedToCube.createInstance(with: modelMatrix, and: simd_float4(c_r,c_g,c_b,1))
-//        }
-        
+
         
         
 
         
         
-        let shadowMapSize = 1200
-        
-        let textureDescriptor = MTLTextureDescriptor.textureCubeDescriptor(pixelFormat: .bgra8Unorm_srgb, size: shadowMapSize, mipmapped: false)
-        textureDescriptor.storageMode = .private
-        textureDescriptor.usage = [.renderTarget, .shaderRead]
-        textureDescriptor.textureType = .typeCube
-       
-        
-        
-        let textureDescriptorDepth = MTLTextureDescriptor.textureCubeDescriptor(pixelFormat: .depth32Float, size: shadowMapSize, mipmapped: false)
-        textureDescriptorDepth.storageMode = .private
-        textureDescriptorDepth.usage = [.renderTarget, .shaderRead]
-        textureDescriptorDepth.textureType = .typeCube
-       
-        
-        colourRenderTarget = device.makeTexture(descriptor: textureDescriptor)!
-        depthRenderTarget = device.makeTexture(descriptor: textureDescriptorDepth)!
-        
-        
+      
         
         var skyCamera = Camera(for: mtkView, eye: simd_float3(0,0,10), centre: simd_float3(0,0,-1))
         cameraLists.append(skyCamera)
         
+        let projectionMatrix = simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2.0, near: 0.1, far: 100)
         SkyScene = skyBoxScene(device: device, at: mtkView, from: simd_float3(0,0,0), attachTo: skyCamera, with: projectionMatrix)
         SkyScene.addDirectionalLight(with: simd_float3(1,1,0))
+        
+        let textureLoader = MTKTextureLoader(device: device)
+        let cubeTextureOptions: [MTKTextureLoader.Option : Any] = [
+          .textureUsage : MTLTextureUsage.shaderRead.rawValue,
+          .textureStorageMode : MTLStorageMode.private.rawValue,
+          .generateMipmaps : true,
+        ]
+        skyTexture = try! textureLoader.newTexture(name: "SkyMap", scaleFactor: 1.0, bundle: nil)
+        
         SkyScene.setSkyMapTexture(with: Texture(texture: skyTexture, index: textureIDs.cubeMap))
-        SkyScene.addNodes(mesh: MeshesToBeRenderedToCube)
+        SkyScene.addNodes(mesh: spheres)
+        SkyScene.addNodes(mesh: cube)
         
         let reflectiveMesh = Mesh(device: device, Mesh: circleMDLMesh)
-        SkyScene.addReflectiveNode(mesh: reflectiveMesh!, with : 3)
+        SkyScene.addReflectiveNode(mesh: reflectiveMesh!,with: 5)
         
         
         

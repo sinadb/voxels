@@ -987,7 +987,8 @@ enum class textureIDs : int {
             
             constexpr sampler cubeMapSampler(coord::normalized,
                                              address::clamp_to_edge,
-                                             filter::linear
+                                             filter::linear,
+                                             mip_filter::nearest
                                              );
             
             simd_float3 incident_vector = normalize(in.world_pos - eye);
@@ -995,7 +996,7 @@ enum class textureIDs : int {
             reflection_vector.y *= -1.0;
             
             //return float4(1,0,0,1);
-            return cubeMap.sample(cubeMapSampler, reflection_vector);
+            return cubeMap.sample(cubeMapSampler, reflection_vector, level(0.0));
             
             
         }
