@@ -186,6 +186,8 @@ class Mesh{
     var scaleInitialState = [Float]()
     var translationInitialState = [simd_float3]()
     
+    var boundingBox : [simd_float3]?
+    
     
     init?(device : MTLDevice, Mesh : MDLMesh,  with label : String = "NoLabel"){
         self.device = device
@@ -196,13 +198,15 @@ class Mesh{
             let mdlMeshVD = MDLVertexDescriptor()
             mdlMeshVD.attributes[0] = MDLVertexAttribute(name: MDLVertexAttributePosition, format: .float4, offset: 0, bufferIndex: 0)
             
-            mdlMeshVD.attributes[1] = MDLVertexAttribute(name: MDLVertexAttributeNormal, format: .float3, offset: 16, bufferIndex: 0)
-            mdlMeshVD.attributes[2] = MDLVertexAttribute(name: MDLVertexAttributeTextureCoordinate, format: .float2, offset: 28, bufferIndex: 0)
+            mdlMeshVD.attributes[1] = MDLVertexAttribute(name: MDLVertexAttributeNormal, format: .float4, offset: 16, bufferIndex: 0)
             
-            mdlMeshVD.attributes[3] = MDLVertexAttribute(name: MDLVertexAttributeTangent, format: .float4, offset: 36, bufferIndex: 0)
+            mdlMeshVD.attributes[2] = MDLVertexAttribute(name: MDLVertexAttributeTextureCoordinate, format: .float4, offset: 32, bufferIndex: 0)
             
-            mdlMeshVD.attributes[4] = MDLVertexAttribute(name: MDLVertexAttributeBitangent, format: .float4, offset: 52, bufferIndex: 0)
-            mdlMeshVD.layouts[0] = MDLVertexBufferLayout(stride: 68)
+            mdlMeshVD.attributes[3] = MDLVertexAttribute(name: MDLVertexAttributeTangent, format: .float4, offset: 48, bufferIndex: 0)
+            
+            mdlMeshVD.attributes[4] = MDLVertexAttribute(name: MDLVertexAttributeBitangent, format: .float4, offset: 64, bufferIndex: 0)
+            
+            mdlMeshVD.layouts[0] = MDLVertexBufferLayout(stride: 80)
             
             Mesh.addTangentBasis(
               forTextureCoordinateAttributeNamed: MDLVertexAttributeTextureCoordinate,
@@ -210,8 +214,10 @@ class Mesh{
               tangentAttributeNamed: MDLVertexAttributeTangent)
             
             Mesh.vertexDescriptor = mdlMeshVD
+            boundingBox = [Mesh.boundingBox.minBounds,Mesh.boundingBox.maxBounds]
             try self.Mesh = MTKMesh(mesh: Mesh, device: device)
             print("\(label) Mesh created")
+        
         }
         catch{
             print(error)
@@ -557,8 +563,23 @@ class Mesh{
     
     
     
-    func createInstance(with modelMatrix : simd_float4x4 , and colour : simd_float4? = nil){
-      
+    func createInstance(with modelMatrix : simd_float4x4 , and colour : simd_float4? = nil, updateBB : Bool = false){
+        
+        if(updateBB){
+            let transformedBB = boundingBox!.map(){
+                modelMatrix * simd_float4(vec3: $0)
+            }
+            let sortedX = transformedBB.sorted(by: {$0.x < $1.x})
+            let sortedY = transformedBB.sorted(by: {$0.y < $1.y})
+            let sortedZ = transformedBB.sorted(by: {$0.z < $1.z})
+            boundingBox![0].x = sortedX.first!.x
+            boundingBox![1].x = sortedX.last!.x
+            boundingBox![0].y = sortedY.first!.y
+            boundingBox![1].y = sortedY.last!.y
+            boundingBox![0].z = sortedZ.first!.z
+            boundingBox![1].z = sortedZ.last!.z
+        }
+        
      
         no_instances += 1
         

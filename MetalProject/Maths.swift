@@ -11,6 +11,18 @@
 import Foundation
 import simd
 
+extension simd_float3 {
+    init(vec4 : simd_float4){
+        self.init(vec4.x,vec4.y,vec4.z)
+    }
+}
+
+extension simd_float4 {
+    init(vec3 : simd_float3){
+        self.init(vec3.x,vec3.y,vec3.z,1)
+    }
+}
+
 extension simd_float4x4{
     init(scale : simd_float3){
         self.init(simd_float4(scale.x,0,0,0),

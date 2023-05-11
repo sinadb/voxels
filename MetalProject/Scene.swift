@@ -12,6 +12,20 @@ import AppKit
 
 
 
+func cushionedVertexDescriptor() -> MTLVertexDescriptor {
+    
+    let posAttrib = Attribute(format: .float4, offset: 0, length: 16, bufferIndex: 0)
+
+    let normalAttrib = Attribute(format: .float4, offset: MemoryLayout<Float>.stride*4,length: 16, bufferIndex: 0)
+    let texAttrib = Attribute(format: .float4, offset: MemoryLayout<Float>.stride*8, length : 16, bufferIndex: 0)
+    let tangentAttrib = Attribute(format: .float4, offset: MemoryLayout<Float>.stride*12, length : 16, bufferIndex: 0)
+    let bitangentAttrib = Attribute(format: .float4, offset: MemoryLayout<Float>.stride*16, length : 16, bufferIndex: 0)
+   
+    
+    
+    return createVertexDescriptor(attributes: posAttrib,normalAttrib,texAttrib,tangentAttrib,bitangentAttrib)
+}
+
 
 func generalVertexDescriptor() -> MTLVertexDescriptor {
     
@@ -21,7 +35,7 @@ func generalVertexDescriptor() -> MTLVertexDescriptor {
     let tangentAttrib = Attribute(format: .float4, offset: MemoryLayout<Float>.stride*9, length : 16, bufferIndex: 0)
     let bitangentAttrib = Attribute(format: .float4, offset: MemoryLayout<Float>.stride*13, length : 16, bufferIndex: 0)
    
-    let instanceAttrib = Attribute(format : .float3, offset: 0, length : 12, bufferIndex: 1)
+    
     
     return createVertexDescriptor(attributes: posAttrib,normalAttrib,texAttrib,tangentAttrib,bitangentAttrib)
 }

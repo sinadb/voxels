@@ -11,59 +11,6 @@ import MetalKit
 import AppKit
 
 
-//func create_random_points_in_sphere(for n : Int) -> [simd_float3]{
-//
-//    var output = [simd_float3]()
-//    for _ in 0..<n{
-//        let x_r = Float.random(in: 0...1)
-//        let y_r = Float.random(in: 0...1)
-//        let z_r = Float.random(in: 0...1)
-//        let new_v = normalize(simd_float3(x_r,y_r,z_r))
-//        output.append(new_v)
-//    }
-//    return output
-//}
-//
-//class drawing_methods {
-//    var depthStencilState : MTLDepthStencilState?
-//    var sampler : MTLSamplerState?
-//    var renderMeshWithColour : MTLRenderPipelineState?
-//    var renderMeshWithCubeMap : MTLRenderPipelineState?
-//    var renderMeshWithFlatMap : MTLRenderPipelineState?
-//    var skyBoxPipeline : MTLRenderPipelineState?
-//    var renderMeshWithCubeMapReflection : MTLRenderPipelineState?
-//
-//
-//    func renderMesh(renderEncoder : MTLRenderCommandEncoder, mesh : Mesh, with colour : inout simd_float4){
-//        renderEncoder.setRenderPipelineState(renderMeshWithColour!)
-//        renderEncoder.setDepthStencilState(depthStencilState!)
-//        renderEncoder.setFrontFacing(.counterClockwise)
-//        renderEncoder.setCullMode(.back)
-//        renderEncoder.setFragmentBytes(&colour , length: MemoryLayout<simd_float4>.stride, index: fragmentBufferIDs.colours)
-//        mesh.draw(renderEncoder: renderEncoder)
-//
-//    }
-//    func renderSkyBox(renderEncoder : MTLRenderCommandEncoder, mesh : Mesh, with cubeMap : MTLTexture){
-//        renderEncoder.setRenderPipelineState(skyBoxPipeline!)
-//        renderEncoder.setDepthStencilState(depthStencilState)
-//        renderEncoder.setFrontFacing(.counterClockwise)
-//        renderEncoder.setCullMode(.front)
-//        renderEncoder.setFragmentTexture(cubeMap, index: textureIDs.cubeMap)
-//        renderEncoder.setFragmentSamplerState(sampler, index: 0)
-//        mesh.draw(renderEncoder: renderEncoder)
-//    }
-//    func renderCubeMapReflection(renderEncoder : MTLRenderCommandEncoder, mesh : Mesh, with cubeMap : MTLTexture, instances : Int = 1){
-//        renderEncoder.setRenderPipelineState(renderMeshWithCubeMapReflection!)
-//        renderEncoder.setDepthStencilState(depthStencilState)
-//        renderEncoder.setFrontFacing(.counterClockwise)
-//        renderEncoder.setCullMode(.back)
-//        renderEncoder.setFragmentTexture(cubeMap, index: textureIDs.cubeMap)
-//        renderEncoder.setFragmentSamplerState(sampler, index: 0)
-//        mesh.draw(renderEncoder: renderEncoder, with: instances )
-//    }
-//}
-//
-
 
 class skyBoxScene {
     var fps = 0
@@ -104,13 +51,7 @@ class skyBoxScene {
     var depthStencilState : MTLDepthStencilState
     var sampler : MTLSamplerState
     var directionalLight : simd_float3?
-    var cameraChanged = false {
-        didSet {
-            for mesh in nodes {
-                mesh.updateNormalMatrix(with: camera.cameraMatrix)
-            }
-        }
-    }
+    var cameraChanged = false
     
     
 
@@ -276,6 +217,13 @@ class skyBoxScene {
     func renderScene(){
         
         frameConstants.viewMatrix = camera.cameraMatrix
+        if(cameraChanged){
+            for mesh in nodes {
+                mesh.updateNormalMatrix(with: frameConstants.viewMatrix)
+
+            }
+            cameraChanged = false
+        }
 
         fps += 1
           guard let commandBuffer = commandQueue.makeCommandBuffer() else {return}
@@ -297,7 +245,7 @@ class skyBoxScene {
         
         
         for mesh in nodes {
-            mesh.rotateMesh(with: simd_float3(0,Float(fps)*0.2,0), and: camera.cameraMatrix)
+            //mesh.rotateMesh(with: simd_float3(0,Float(fps)*0.2,0), and: camera.cameraMatrix)
             mesh.draw(renderEncoder: renderEncoder)
         }
         
@@ -362,6 +310,9 @@ class skyBoxScene {
 
 
 
+
+
+
 class Renderer : NSObject, MTKViewDelegate {
     
   
@@ -376,13 +327,40 @@ class Renderer : NSObject, MTKViewDelegate {
    
     let device: MTLDevice
     let commandQueue : MTLCommandQueue
-    var spheresMesh : Mesh?
-    var CubeMesh : Mesh?
-    var skyTexture : MTLTexture
-    var SkyScene : skyBoxScene
     var cameraLists = [Camera]()
     
+    let posAttrib = Attribute(format: .float4, offset: 0, length: 16, bufferIndex: 0)
+    let normalAttrib = Attribute(format: .float3, offset: MemoryLayout<Float>.stride*4,length: 12, bufferIndex: 0)
+    let texAttrib = Attribute(format: .float2, offset: MemoryLayout<Float>.stride*7, length : 8, bufferIndex: 0)
+    let tangentAttrib = Attribute(format: .float4, offset: MemoryLayout<Float>.stride*9, length : 16, bufferIndex: 0)
+    let bitangentAttrib = Attribute(format: .float4, offset: MemoryLayout<Float>.stride*13, length : 16, bufferIndex: 0)
     
+    var triangleVertices : [Float] = [-1,-1,0,1, 0,0,1,1,  0,0,0,0,  0,0,0,0, 0,0,0,0,
+                                       1,-1,0,1, 0,0,1,1,  0,0,0,0,   0,0,0,0, 0,0,0,0,
+                                       0,1,0,1,  0,0,1,1,  0,0,0,0,   0,0,0,0, 0,0,0,0,
+                                      
+    ]
+    var triangleIndices : [uint32] = [0,1,2]
+    var triangleVB : MTLBuffer?
+    var triangleIB : MTLBuffer?
+    let pipeline : pipeLine
+    var currentTriangleTranslation = simd_float3(-3,0,-10)
+    var frameSephamore = DispatchSemaphore(value: 1)
+    let computePipeLineState : MTLComputePipelineState
+    var axisMinMax : MTLBuffer
+    var fps = 0
+    let cubeMesh : Mesh
+    
+    
+    var frameConstants = FrameConstants(viewMatrix: simd_float4x4(eye: simd_float3(0), center: simd_float3(0,0,-1), up: simd_float3(0,1,0)) , projectionMatrix: simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2.0, near: 0.1, far: 20))
+    
+    var cubeModelMatrix : simd_float4x4
+    var cubeNormalMatrix : simd_float4x4
+    
+    var triangleModelMatrix : simd_float4x4
+    var triangleNormalMatrix : simd_float4x4
+    var colourBuffer : MTLBuffer
+    let depthStencilState : MTLDepthStencilState
     
   
     
@@ -394,6 +372,10 @@ class Renderer : NSObject, MTKViewDelegate {
         commandQueue = device.makeCommandQueue()!
         mtkView.colorPixelFormat = .bgra8Unorm_srgb
         mtkView.depthStencilPixelFormat = .depth32Float
+        let depthStencilDescriptor = MTLDepthStencilDescriptor()
+        depthStencilDescriptor.isDepthWriteEnabled = true
+        depthStencilDescriptor.depthCompareFunction = .lessEqual
+        depthStencilState = device.makeDepthStencilState(descriptor: depthStencilDescriptor)!
         
        
         
@@ -404,81 +386,47 @@ class Renderer : NSObject, MTKViewDelegate {
         let coneMDLMesh = MDLMesh(coneWithExtent: simd_float3(1,1,1), segments: simd_uint2(100,100), inwardNormals: False, cap: False, geometryType: .triangles, allocator: allocator)
       
      
-       
-       
-        
-        
-        
-    
-        
-        
-       
-        
-       
-        
-        var skyBoxCamera = Camera(for: mtkView, eye: simd_float3(0), centre: simd_float3(0,0,1))
-        cameraLists.append(skyBoxCamera)
-        
-        
-        var cube = Mesh(device: device, Mesh: cubeMDLMesh)!
-        var spheres = Mesh(device: device, Mesh: circleMDLMesh)!
-        
-        for i in 0..<100 {
-            
-            var x_r = Float.random(in: -20 ... 20)
-            var y_r = Float.random(in: -20 ... 20)
-            var z_r = Float.random(in: -20 ... 20)
-            
-            
-            
-            let c_r = Float.random(in: 0...1)
-            let c_g = Float.random(in: 0...1)
-            let c_b = Float.random(in: 0...1)
-            
-            let modelMatrix = create_modelMatrix(rotation: simd_float3(0), translation: simd_float3(x_r,y_r,z_r), scale: simd_float3(1))
-            
-            if(i < 50){
-                spheres.createInstance(with: modelMatrix, and: simd_float4(c_r,c_g,c_b,1))
-
-            }
-            else{
-                cube.createInstance(with: modelMatrix, and: simd_float4(c_r,c_g,c_b,1))
-
-            }
-                    
-            
-        }
-        
-
-        
-        
-
-        
         
       
+       
+       
+       
         
-        var skyCamera = Camera(for: mtkView, eye: simd_float3(0,0,10), centre: simd_float3(0,0,-1))
-        cameraLists.append(skyCamera)
         
-        let projectionMatrix = simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2.0, near: 0.1, far: 100)
-        SkyScene = skyBoxScene(device: device, at: mtkView, from: simd_float3(0,0,0), attachTo: skyCamera, with: projectionMatrix)
-        SkyScene.addDirectionalLight(with: simd_float3(1,1,0))
+        triangleVB = device.makeBuffer(bytes: &triangleVertices, length: MemoryLayout<Float>.stride * 20 * 3, options: [])
+        triangleIB = device.makeBuffer(bytes: &triangleIndices, length: MemoryLayout<uint32>.stride * 3, options: [])
         
-        let textureLoader = MTKTextureLoader(device: device)
-        let cubeTextureOptions: [MTKTextureLoader.Option : Any] = [
-          .textureUsage : MTLTextureUsage.shaderRead.rawValue,
-          .textureStorageMode : MTLStorageMode.private.rawValue,
-          .generateMipmaps : true,
-        ]
-        skyTexture = try! textureLoader.newTexture(name: "SkyMap", scaleFactor: 1.0, bundle: nil)
+        cubeMesh = Mesh(device: device, Mesh: cubeMDLMesh)!
         
-        SkyScene.setSkyMapTexture(with: Texture(texture: skyTexture, index: textureIDs.cubeMap))
-        SkyScene.addNodes(mesh: spheres)
-        SkyScene.addNodes(mesh: cube)
         
-        let reflectiveMesh = Mesh(device: device, Mesh: circleMDLMesh)
-        SkyScene.addReflectiveNode(mesh: reflectiveMesh!,with: 5)
         
+        cubeModelMatrix = create_modelMatrix(translation: simd_float3(0,0,-10), rotation: simd_float3(0), scale: simd_float3(1))
+        cubeNormalMatrix = create_normalMatrix(modelViewMatrix: frameConstants.viewMatrix * cubeModelMatrix)
+        
+        triangleModelMatrix = create_modelMatrix(translation: currentTriangleTranslation, rotation: simd_float3(0), scale: simd_float3(0.1))
+        triangleNormalMatrix = create_normalMatrix(modelViewMatrix: frameConstants.viewMatrix * triangleModelMatrix)
+        
+        
+        cubeMesh.createInstance(with: cubeModelMatrix, and : simd_float4(1,0,0,1),updateBB: true)
+        cubeMesh.init_instance_buffers(with: frameConstants.viewMatrix)
+        
+        
+        let vertexDescriptor = cushionedVertexDescriptor()
+        
+        pipeline = pipeLine(device, "render_vertex", "render_fragment", vertexDescriptor, false)!
+    
+        
+        let library = device.makeDefaultLibrary()
+        let computeFunction = library?.makeFunction(name: "compute")
+        computePipeLineState = try! device.makeComputePipelineState(function: computeFunction!)
+        
+        
+        
+        axisMinMax = device.makeBuffer(length: MemoryLayout<simd_float2>.stride * 3,options: [])!
+        
+        colourBuffer = device.makeBuffer(length: 16,options: [])!
+       
+        print("The bounding box of the cube is : ", cubeMesh.boundingBox)
         
         
         
@@ -495,128 +443,77 @@ class Renderer : NSObject, MTKViewDelegate {
     
     func draw(in view: MTKView) {
         
-        SkyScene.renderScene()
+        frameSephamore.wait()
         
-     
-//        guard let commandBuffer = commandQueue.makeCommandBuffer() else {return}
-//
-//        guard let renderPassDescriptor1 = view.currentRenderPassDescriptor else {return}
-//        renderPassDescriptor1.colorAttachments[0].texture = colourRenderTarget
-//        renderPassDescriptor1.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
-//        renderPassDescriptor1.depthAttachment.texture = depthRenderTarget
-//        renderPassDescriptor1.renderTargetArrayLength = 6
-//
-//        guard let renderEncoder1 = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor1) else {return}
-//        renderEncoder1.setRenderPipelineState(renderToCubePipelineColouredMesh.m_pipeLine)
-//        renderEncoder1.setVertexAmplificationCount(6, viewMappings: nil)
-//        renderEncoder1.setDepthStencilState(depthStencilState)
-//
-//
-////        var instanceConstants = InstanceConstants(modelMatrix: modelMatrix, normalMatrix: normalMatrix)
-//
-//
-//        let projection = simd_float4x4(fovRadians: 3.14/2, aspectRatio: 1, near: 0.1, far: 100)
-//
-//        var cameraArray = [simd_float4x4]()
-//
-//        cameraArray.append(simd_float4x4(eye: simd_float3(0), center: simd_float3(1,0,0) , up: simd_float3(0,-1,0)))
-//
-//        cameraArray.append(simd_float4x4(eye: simd_float3(0), center: simd_float3(-1,0,0) , up: simd_float3(0,-1,0)))
-//
-//        cameraArray.append(simd_float4x4(eye: simd_float3(0),  center: simd_float3(0,-1,0) , up: simd_float3(0,0,-1)))
-//
-//        cameraArray.append(simd_float4x4(eye: simd_float3(0), center: simd_float3(0,1,0) , up: simd_float3(0,0,1)))
-//
-//        cameraArray.append(simd_float4x4(eye: simd_float3(0), center: simd_float3(0,0,1) , up: simd_float3(0,-1,0)))
-//
-//        cameraArray.append(simd_float4x4(eye: simd_float3(0), center: simd_float3(0,0,-1) , up: simd_float3(0,-1,0)))
-//
-//        var frameConstants = [FrameConstants]()
-//        for i in 0..<6{
-//
-//            frameConstants.append(FrameConstants(viewMatrix: cameraArray[i], projectionMatrix: projection))
-//        }
-//
-//        var colour = simd_float4(1,0,0,1)
-//        renderEncoder1.setVertexBytes(&colour, length: 16, index: 3)
-//        renderEncoder1.setVertexBytes(&frameConstants, length: MemoryLayout<FrameConstants>.stride*6, index: vertexBufferIDs.frameConstant)
-////        renderEncoder1.setVertexBytes(&instanceConstants, length: MemoryLayout<InstanceConstants>.stride, index: vertexBufferIDs.instanceConstant)
-//        MeshesToBeRenderedToCube.draw(renderEncoder: renderEncoder1,with: 1)
-//
-//        renderEncoder1.setRenderPipelineState(renderToCubePipelineSkyBox.m_pipeLine)
-//        CubeMesh?.draw(renderEncoder: renderEncoder1,with: 1)
-//
-//
-//        renderEncoder1.endEncoding()
-//
-//
-//
-//
-//
-//
-//        guard let renderPassDescriptor = view.currentRenderPassDescriptor else {return}
-//        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
-//        renderPassDescriptor.depthAttachment.clearDepth = 1
-//
-//
-//
-//        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {return}
-//
-//        let projectionMatrix = simd_float4x4(fovRadians: 3.14/2, aspectRatio: 2, near: 0.1, far: 100)
-//        let viewMatrix = cameraLists.last!.cameraMatrix
-//        var sceneConstants = FrameConstants(viewMatrix: viewMatrix , projectionMatrix: projectionMatrix)
-//        renderEncoder.setRenderPipelineState(skyboxpipeline.m_pipeLine)
-//        renderEncoder.setVertexBytes(&sceneConstants, length: MemoryLayout<FrameConstants>.stride, index: vertexBufferIDs.frameConstant)
-//        //renderEncoder.setFragmentTexture(skyTexture, index: textureIDs.cubeMap)
-//        CubeMesh?.draw(renderEncoder: renderEncoder,with: 1)
-//        renderEncoder.endEncoding()
-//
-//
-//
-//        //testShadowScene.shadowPass(with: commandBuffer, in: view)
-//        //testShadowScene.test_pointShadowDepthPass(with: commandBuffer, in: view)
-////        fps += 1
-////
-//
-////        guard let renderPassDescriptor1 = view.currentRenderPassDescriptor else {return}
-////        renderPassDescriptor1.colorAttachments[0].texture = testTextureArray
-////        renderPassDescriptor1.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
-////        renderPassDescriptor1.depthAttachment.texture = testDepthTextureArray
-////        renderPassDescriptor1.renderTargetArrayLength = 3
-////
-////        guard let renderEncoder1 = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor1) else {return}
-////
-////        var mapping0 = MTLVertexAmplificationViewMapping(viewportArrayIndexOffset: 0, renderTargetArrayIndexOffset: 2)
-////        var mapping1 = MTLVertexAmplificationViewMapping(viewportArrayIndexOffset: 0, renderTargetArrayIndexOffset: 1)
-////        var mapping2 = MTLVertexAmplificationViewMapping(viewportArrayIndexOffset: 0, renderTargetArrayIndexOffset: 0)
-////        let mappings = [mapping0,mapping1,mapping2]
-////
-////        renderEncoder1.setRenderPipelineState(testSlicesRenderingPipeline!.m_pipeLine)
-////        renderEncoder1.setVertexAmplificationCount(3, viewMappings: mappings)
-////        renderEncoder1.setVertexBuffer(wallVertexBuffer, offset: 0, index: 0)
-////        renderEncoder1.drawIndexedPrimitives(type: .triangle, indexCount: 6, indexType: .uint16, indexBuffer: wallIndexBuffer!, indexBufferOffset: 0, instanceCount: 1)
-////
-////        renderEncoder1.endEncoding()
-////
-////
-////        guard let renderPassDescriptor = view.currentRenderPassDescriptor else {return}
-////
-////        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
-////        renderPassDescriptor.colorAttachments[0].loadAction = .clear
-////        renderPassDescriptor.colorAttachments[0].storeAction = .store
-////
-////
-////       guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {return}
-////        var offset : [simd_float4] = [simd_float4(-0.5,0,0,0),simd_float4(0.5,0,0,0),simd_float4(0,0.5,0,0),simd_float4(0,-0.5,0,0)]
-////        renderEncoder.setRenderPipelineState(testAmplificationPipeline.m_pipeLine)
-////        renderEncoder.setVertexBytes(&offset, length: MemoryLayout<simd_float4>.stride*4, index: 10)
-////        renderEncoder.setVertexAmplificationCount(4, viewMappings: nil)
-////        renderEncoder.setVertexBuffer(pointBuffer, offset: 0, index: 0)
-////        renderEncoder.drawIndexedPrimitives(type: .point, indexCount: 1, indexType: .uint16, indexBuffer: pointIndexBuffer, indexBufferOffset: 0, instanceCount: 1)
-////
-////        renderEncoder.endEncoding()
-//        commandBuffer.present(view.currentDrawable!)
-//        commandBuffer.commit()
+        
+        triangleModelMatrix = create_modelMatrix(translation: currentTriangleTranslation, rotation: simd_float3(0), scale: simd_float3(0.3))
+        triangleNormalMatrix = create_normalMatrix(modelViewMatrix: frameConstants.viewMatrix * triangleModelMatrix)
+        var triangleInstanceData = InstanceConstants(modelMatrix: triangleModelMatrix, normalMatrix: triangleNormalMatrix)
+       
+        
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else {return}
+        commandBuffer.addCompletedHandler(){[self] _ in
+            frameSephamore.signal()
+        }
+        
+        guard let computeCommandBuffer = commandQueue.makeCommandBuffer() else {return}
+        
+        
+        guard let computeEncoder = computeCommandBuffer.makeComputeCommandEncoder() else {return}
+        computeEncoder.setComputePipelineState(computePipeLineState)
+        var cubeBB = cubeMesh.boundingBox!
+        computeEncoder.setBytes(&cubeBB, length: MemoryLayout<simd_float3>.stride * 2, index: 0)
+        computeEncoder.setBytes(&triangleVertices, length: MemoryLayout<Float>.stride * 20 * 3, index: 1)
+        computeEncoder.setBytes(&triangleInstanceData, length: MemoryLayout<InstanceConstants>.stride, index: 2)
+        computeEncoder.setBuffer(colourBuffer, offset: 0, index: 3)
+        computeEncoder.dispatchThreadgroups(MTLSize(width: 1, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+        computeEncoder.endEncoding()
+        computeCommandBuffer.commit()
+        computeCommandBuffer.waitUntilCompleted()
+        
+        
+        
+        
+        guard let renderPassDescriptor = view.currentRenderPassDescriptor else {return}
+        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
+        renderPassDescriptor.depthAttachment.clearDepth = 1
+        renderPassDescriptor.depthAttachment.loadAction = .clear
+        
+        
+        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else {return}
+        renderEncoder.setDepthStencilState(depthStencilState)
+        renderEncoder.setFrontFacing(.counterClockwise)
+        renderEncoder.setCullMode(.back)
+        
+        renderEncoder.setRenderPipelineState(pipeline.m_pipeLine)
+        
+        renderEncoder.setVertexBytes(&frameConstants, length: MemoryLayout<FrameConstants>.stride, index: vertexBufferIDs.frameConstant)
+        cubeMesh.draw(renderEncoder: renderEncoder)
+        
+        renderEncoder.setVertexBuffer(triangleVB, offset: 0, index: 0)
+        renderEncoder.setVertexBuffer(colourBuffer, offset: 0, index: vertexBufferIDs.colour)
+        renderEncoder.setVertexBytes(&triangleInstanceData, length: MemoryLayout<InstanceConstants>.stride, index: vertexBufferIDs.instanceConstant)
+        
+        renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: 3, indexType: .uint32, indexBuffer: triangleIB!, indexBufferOffset: 0, instanceCount: 1)
+        
+        
+        
+       
+        renderEncoder.endEncoding()
+        
+        commandBuffer.present(view.currentDrawable!)
+        commandBuffer.commit()
+        if (fps == 0){
+            
+            let array = axisMinMax.contents().bindMemory(to: simd_float2.self, capacity: 3)
+            for i in 0..<3 {
+                print((array + i ).pointee)
+            }
+        }
+        fps+=1
+        
+        
+
        
     }
 

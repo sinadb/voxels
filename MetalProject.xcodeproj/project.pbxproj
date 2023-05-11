@@ -24,14 +24,7 @@
 		DA75DEBE2955AEAF00251E4C /* Maths.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA75DEBD2955AEAF00251E4C /* Maths.swift */; };
 		DA981A4129DB001500498CA0 /* Scene.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA981A4029DB001500498CA0 /* Scene.swift */; };
 		DA99E4542977098900249982 /* compute.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA99E4532977098900249982 /* compute.swift */; };
-		DAA3355429D353AC00B8A1C1 /* cobblestone_baseColor.png in Resources */ = {isa = PBXBuildFile; fileRef = DAA3354E29D353AC00B8A1C1 /* cobblestone_baseColor.png */; };
-		DAA3355629D353AC00B8A1C1 /* cobblestone_normal.png in Resources */ = {isa = PBXBuildFile; fileRef = DAA3355029D353AC00B8A1C1 /* cobblestone_normal.png */; };
-		DAA3355729D353AC00B8A1C1 /* brick_baseColor.png in Resources */ = {isa = PBXBuildFile; fileRef = DAA3355129D353AC00B8A1C1 /* brick_baseColor.png */; };
-		DAA3355829D353AC00B8A1C1 /* brick_normal.png in Resources */ = {isa = PBXBuildFile; fileRef = DAA3355229D353AC00B8A1C1 /* brick_normal.png */; };
-		DAA3355E29D37C4E00B8A1C1 /* alley.mtl in Resources */ = {isa = PBXBuildFile; fileRef = DAA3355D29D37C4E00B8A1C1 /* alley.mtl */; };
-		DAA3356029D37D0C00B8A1C1 /* alley.obj in Resources */ = {isa = PBXBuildFile; fileRef = DAA3355F29D37D0C00B8A1C1 /* alley.obj */; };
-		DAA5ED1C29D7281C003618F6 /* cobblestone_displacement.png in Resources */ = {isa = PBXBuildFile; fileRef = DAA5ED1A29D7281C003618F6 /* cobblestone_displacement.png */; };
-		DAA5ED1D29D7281C003618F6 /* brick_displacement.png in Resources */ = {isa = PBXBuildFile; fileRef = DAA5ED1B29D7281C003618F6 /* brick_displacement.png */; };
+		DA9B2B662A08394F003B1BAE /* test.metal in Sources */ = {isa = PBXBuildFile; fileRef = DA9B2B652A08394F003B1BAE /* test.metal */; };
 		DAA6AAF129BBC16700BF03E3 /* constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAA6AAF029BBC16700BF03E3 /* constants.swift */; };
 /* End PBXBuildFile section */
 
@@ -76,14 +69,7 @@
 		DA75DEBD2955AEAF00251E4C /* Maths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Maths.swift; sourceTree = "<group>"; };
 		DA981A4029DB001500498CA0 /* Scene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scene.swift; sourceTree = "<group>"; };
 		DA99E4532977098900249982 /* compute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = compute.swift; sourceTree = "<group>"; };
-		DAA3354E29D353AC00B8A1C1 /* cobblestone_baseColor.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cobblestone_baseColor.png; sourceTree = "<group>"; };
-		DAA3355029D353AC00B8A1C1 /* cobblestone_normal.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cobblestone_normal.png; sourceTree = "<group>"; };
-		DAA3355129D353AC00B8A1C1 /* brick_baseColor.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = brick_baseColor.png; sourceTree = "<group>"; };
-		DAA3355229D353AC00B8A1C1 /* brick_normal.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = brick_normal.png; sourceTree = "<group>"; };
-		DAA3355D29D37C4E00B8A1C1 /* alley.mtl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = alley.mtl; sourceTree = "<group>"; };
-		DAA3355F29D37D0C00B8A1C1 /* alley.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = alley.obj; sourceTree = "<group>"; };
-		DAA5ED1A29D7281C003618F6 /* cobblestone_displacement.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = cobblestone_displacement.png; sourceTree = "<group>"; };
-		DAA5ED1B29D7281C003618F6 /* brick_displacement.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = brick_displacement.png; sourceTree = "<group>"; };
+		DA9B2B652A08394F003B1BAE /* test.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = test.metal; sourceTree = "<group>"; };
 		DAA6AAF029BBC16700BF03E3 /* constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = constants.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -145,11 +131,11 @@
 		DA75DE892954AE1500251E4C /* MetalProject */ = {
 			isa = PBXGroup;
 			children = (
-				DAA3354C29D353AC00B8A1C1 /* Alley */,
 				DA3293E529D2176900C5B842 /* Models */,
 				DA21FF3D29CB9F8B00F5C549 /* Camera.swift */,
 				DA981A4029DB001500498CA0 /* Scene.swift */,
 				DA75DEBB2955A58B00251E4C /* Shaders.metal */,
+				DA9B2B652A08394F003B1BAE /* test.metal */,
 				DAA6AAF029BBC16700BF03E3 /* constants.swift */,
 				DA1EB18329B388ED00942766 /* Helper.swift */,
 				DA99E4532977098900249982 /* compute.swift */,
@@ -182,22 +168,6 @@
 			);
 			path = MetalProjectUITests;
 			sourceTree = "<group>";
-		};
-		DAA3354C29D353AC00B8A1C1 /* Alley */ = {
-			isa = PBXGroup;
-			children = (
-				DAA3354E29D353AC00B8A1C1 /* cobblestone_baseColor.png */,
-				DAA3355D29D37C4E00B8A1C1 /* alley.mtl */,
-				DAA3355F29D37D0C00B8A1C1 /* alley.obj */,
-				DAA3355029D353AC00B8A1C1 /* cobblestone_normal.png */,
-				DAA5ED1B29D7281C003618F6 /* brick_displacement.png */,
-				DAA5ED1A29D7281C003618F6 /* cobblestone_displacement.png */,
-				DAA3355129D353AC00B8A1C1 /* brick_baseColor.png */,
-				DAA3355229D353AC00B8A1C1 /* brick_normal.png */,
-			);
-			name = Alley;
-			path = MetalProject/Alley;
-			sourceTree = SOURCE_ROOT;
 		};
 /* End PBXGroup section */
 
@@ -310,19 +280,11 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				DAA3355729D353AC00B8A1C1 /* brick_baseColor.png in Resources */,
-				DAA3355629D353AC00B8A1C1 /* cobblestone_normal.png in Resources */,
 				DA3293EA29D2176900C5B842 /* spot_material.mtl in Resources */,
-				DAA5ED1D29D7281C003618F6 /* brick_displacement.png in Resources */,
-				DAA5ED1C29D7281C003618F6 /* cobblestone_displacement.png in Resources */,
-				DAA3355429D353AC00B8A1C1 /* cobblestone_baseColor.png in Resources */,
 				DA3293EB29D2176900C5B842 /* spot_triangulated.obj in Resources */,
 				DA75DE8F2954AE1500251E4C /* Assets.xcassets in Resources */,
-				DAA3356029D37D0C00B8A1C1 /* alley.obj in Resources */,
 				DA3293E929D2176900C5B842 /* spot_texture.png in Resources */,
 				DA75DE922954AE1500251E4C /* Main.storyboard in Resources */,
-				DAA3355829D353AC00B8A1C1 /* brick_normal.png in Resources */,
-				DAA3355E29D37C4E00B8A1C1 /* alley.mtl in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -348,6 +310,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DA75DEBC2955A58B00251E4C /* Shaders.metal in Sources */,
+				DA9B2B662A08394F003B1BAE /* test.metal in Sources */,
 				DA1EB18429B388ED00942766 /* Helper.swift in Sources */,
 				DA981A4129DB001500498CA0 /* Scene.swift in Sources */,
 				DA75DE8D2954AE1500251E4C /* ViewController.swift in Sources */,

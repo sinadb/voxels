@@ -97,45 +97,45 @@ class ViewController: NSViewController {
     }
     
    
-    override func mouseDragged(with event: NSEvent) {
-        let pos = simd_float2(Float(event.locationInWindow.x),Float(event.locationInWindow.y))
-        for camera in renderer.cameraLists{
-            camera.update_mouse(with: pos)
-            renderer.SkyScene.cameraChanged = true
-
-        }
-    }
+   
     
     func myKeyDownEvent(event: NSEvent) -> NSEvent
     {
         switch event.keyCode {
+        case Keycode.q:
+            renderer.currentTriangleTranslation.z += 0.1
+            break
+        case Keycode.e:
+            renderer.currentTriangleTranslation.z -= 0.1
+            break
+            
         case Keycode.w:
+            renderer.currentTriangleTranslation.y += 0.1
                 for camera in renderer.cameraLists{
                     camera.update_eye(with: simd_float3(0,1,0))
-                    renderer.SkyScene.cameraChanged = true
+                   
                 }
             break
         case Keycode.s:
-           
+            renderer.currentTriangleTranslation.y -= 0.1
                 for camera in renderer.cameraLists{
                     camera.update_eye(with: simd_float3(0,-1,0))
-                    renderer.SkyScene.cameraChanged = true
                 }
            
             break
         case Keycode.a:
-          
+            renderer.currentTriangleTranslation.x -= 0.1
                 for camera in renderer.cameraLists{
                     camera.update_eye(with: simd_float3(-1,0,0))
-                    renderer.SkyScene.cameraChanged = true
+                    
                 }
            
             break
         case Keycode.d:
-           
+            renderer.currentTriangleTranslation.x += 0.1
                 for camera in renderer.cameraLists{
                     camera.update_eye(with: simd_float3(1,0,0))
-                    renderer.SkyScene.cameraChanged = true
+                   
                 }
             break
         default:
