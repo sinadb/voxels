@@ -18,6 +18,9 @@ extension simd_float3 {
 }
 
 extension simd_float4 {
+    init(_ x : Float, _ y : Float, _ z: Float){
+        self.init(x,y,z,1)
+    }
     init(vec3 : simd_float3){
         self.init(vec3.x,vec3.y,vec3.z,1)
     }
@@ -136,7 +139,7 @@ func create_modelMatrix(translation : simd_float3, rotation : simd_float3, scale
     return translateMat*rotateMat*scaleMat
 }
 
-func create_modelMatrix(rotation : simd_float3, translation : simd_float3, scale : simd_float3) -> simd_float4x4 {
+func create_modelMatrix(rotation : simd_float3 = simd_float3(0), translation : simd_float3, scale : simd_float3 = simd_float3(1)) -> simd_float4x4 {
     let translateMat = simd_float4x4(translate: translation)
     let rotateMat = simd_float4x4(rotationXYZ: rotation)
     let scaleMat = simd_float4x4(scale: scale)

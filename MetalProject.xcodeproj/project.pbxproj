@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		DA0A77482A0E603600639F51 /* utils.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0A77472A0E603600639F51 /* utils.swift */; };
 		DA1EB18429B388ED00942766 /* Helper.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA1EB18329B388ED00942766 /* Helper.swift */; };
 		DA21FF3E29CB9F8B00F5C549 /* Camera.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA21FF3D29CB9F8B00F5C549 /* Camera.swift */; };
 		DA3293E929D2176900C5B842 /* spot_texture.png in Resources */ = {isa = PBXBuildFile; fileRef = DA3293E629D2176900C5B842 /* spot_texture.png */; };
@@ -46,6 +47,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		DA0A77472A0E603600639F51 /* utils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = utils.swift; sourceTree = "<group>"; };
 		DA1EB18329B388ED00942766 /* Helper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Helper.swift; path = ../Helper.swift; sourceTree = "<group>"; };
 		DA21FF3D29CB9F8B00F5C549 /* Camera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Camera.swift; sourceTree = "<group>"; };
 		DA3293E629D2176900C5B842 /* spot_texture.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = spot_texture.png; sourceTree = "<group>"; };
@@ -142,6 +144,7 @@
 				DA75DEBD2955AEAF00251E4C /* Maths.swift */,
 				DA75DE8A2954AE1500251E4C /* AppDelegate.swift */,
 				DA75DEB52954AE3300251E4C /* Renderer.swift */,
+				DA0A77472A0E603600639F51 /* utils.swift */,
 				DA75DE8C2954AE1500251E4C /* ViewController.swift */,
 				DA75DEBA2954AF2C00251E4C /* ShaderDefinition.h */,
 				DA75DE8E2954AE1500251E4C /* Assets.xcassets */,
@@ -312,6 +315,7 @@
 				DA75DEBC2955A58B00251E4C /* Shaders.metal in Sources */,
 				DA9B2B662A08394F003B1BAE /* test.metal in Sources */,
 				DA1EB18429B388ED00942766 /* Helper.swift in Sources */,
+				DA0A77482A0E603600639F51 /* utils.swift in Sources */,
 				DA981A4129DB001500498CA0 /* Scene.swift in Sources */,
 				DA75DE8D2954AE1500251E4C /* ViewController.swift in Sources */,
 				DA75DEB62954AE3300251E4C /* Renderer.swift in Sources */,

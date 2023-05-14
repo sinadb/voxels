@@ -187,6 +187,7 @@ class Mesh{
     var translationInitialState = [simd_float3]()
     
     var boundingBox : [simd_float3]?
+    var triangleCount : Int32?
     
     
     init?(device : MTLDevice, Mesh : MDLMesh,  with label : String = "NoLabel"){
@@ -216,6 +217,8 @@ class Mesh{
             Mesh.vertexDescriptor = mdlMeshVD
             boundingBox = [Mesh.boundingBox.minBounds,Mesh.boundingBox.maxBounds]
             try self.Mesh = MTKMesh(mesh: Mesh, device: device)
+            triangleCount = Int32(self.Mesh!.submeshes[0].indexCount / 3)
+            
             print("\(label) Mesh created")
         
         }
@@ -707,7 +710,7 @@ class Mesh{
 //
 //    }
 //
-    func draw(renderEncoder : MTLRenderCommandEncoder, with instances : Int? = nil, culling : MTLCullMode? = nil){
+    func draw(renderEncoder : MTLRenderCommandEncoder, with instances : Int? = nil, culling : MTLCullMode? = nil, renderMode : MTLPrimitiveType = .triangle){
         
         if(cullFace != nil){
            
@@ -749,7 +752,7 @@ class Mesh{
         else{
             renderEncoder.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
             let count = instances ?? no_instances
-            renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: indexData!.count, indexType: .uint16, indexBuffer: indexBuffer!, indexBufferOffset: 0, instanceCount: count)
+            renderEncoder.drawIndexedPrimitives(type: renderMode , indexCount: indexData!.count, indexType: .uint16, indexBuffer: indexBuffer!, indexBufferOffset: 0, instanceCount: count)
         }
     }
     func drawTesselated(renderEncoder : MTLRenderCommandEncoder){
@@ -868,6 +871,20 @@ class pipeLine {
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
         pipelineDescriptor.maxVertexAmplificationCount = amplificationCount
         pipelineDescriptor.colorAttachments[0].pixelFormat = colourPixelFormat
+        pipelineDescriptor.colorAttachments[0].isBlendingEnabled = true
+        pipelineDescriptor.colorAttachments[0]
+          .sourceRGBBlendFactor = .one
+        pipelineDescriptor.colorAttachments[0]
+          .destinationRGBBlendFactor = .oneMinusSourceAlpha
+        pipelineDescriptor.colorAttachments[0]
+          .rgbBlendOperation = .add
+          
+        pipelineDescriptor.colorAttachments[0]
+          .sourceAlphaBlendFactor = .one
+//        pipelineDescriptor.colorAttachments[0]
+//          .destinationAlphaBlendFactor = .oneMinusSourceAlpha
+//        pipelineDescriptor.colorAttachments[0]
+//          .alphaBlendOperation = .add
         pipelineDescriptor.depthAttachmentPixelFormat = depthPixelFormat
         if let functionConstantValues = functionConstant {
             pipelineDescriptor.vertexFunction = try! library.makeFunction(name: vertexFunctionName,constantValues: functionConstantValues)

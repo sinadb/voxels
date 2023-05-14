@@ -75,7 +75,7 @@ class ViewController: NSViewController {
     var mtkView: MTKView!
     var renderer: Renderer!
     
-    override func mouseMoved(with event: NSEvent) {
+//    override func mouseMoved(with event: NSEvent) {
 //        if mouse_x == nil && mouse_y == nil {
 //            mouse_x = Float(event.locationInWindow.x)
 //            mouse_y = Float(event.locationInWindow.y)
@@ -88,7 +88,7 @@ class ViewController: NSViewController {
 //            mouse_y = Float(event.locationInWindow.y)
 //            renderer.testCamera.update()
 //        }
-    }
+//    }
     override func mouseUp(with event: NSEvent) {
         for camera in renderer.cameraLists{
             camera.reset_mouse()
@@ -96,47 +96,100 @@ class ViewController: NSViewController {
         }
     }
     
-   
+    override func mouseDragged(with event: NSEvent) {
+        let pos = simd_float2(Float(event.locationInWindow.x),Float(event.locationInWindow.y))
+        for camera in renderer.cameraLists{
+            camera.update_mouse(with: pos)
+
+        }
+    }
    
     
     func myKeyDownEvent(event: NSEvent) -> NSEvent
     {
         switch event.keyCode {
+        case Keycode.space:
+            if(renderer.moveTriangle){
+                renderer.moveTriangle = false
+            }
+            else {
+                renderer.moveTriangle = true
+            }
+            break
         case Keycode.q:
-            renderer.currentTriangleTranslation.z += 0.1
+            if(renderer.moveTriangle){
+                renderer.currentTriangleTranslation.z += 0.1
+            }
+            else{
+                for camera in renderer.cameraLists{
+                    camera.update_eye(with: simd_float3(0,0,1))
+                }
+            }
             break
         case Keycode.e:
-            renderer.currentTriangleTranslation.z -= 0.1
+            if(renderer.moveTriangle){
+                renderer.currentTriangleTranslation.z -= 0.1
+            }
+            else{
+                for camera in renderer.cameraLists{
+                    camera.update_eye(with: simd_float3(0,0,-1))
+                }
+            }
             break
             
         case Keycode.w:
-            renderer.currentTriangleTranslation.y += 0.1
+            if(renderer.moveTriangle){
+                renderer.currentTriangleTranslation.y += 0.1
+            }
+            else{
                 for camera in renderer.cameraLists{
                     camera.update_eye(with: simd_float3(0,1,0))
-                   
+                    
                 }
+            }
             break
+        case Keycode.w:
+            if(renderer.moveTriangle){
+                renderer.currentTriangleTranslation.y += 0.1
+            }
+            else{
+                for camera in renderer.cameraLists{
+                    camera.update_eye(with: simd_float3(0,1,0))
+                }
+            }
         case Keycode.s:
-            renderer.currentTriangleTranslation.y -= 0.1
+            if(renderer.moveTriangle){
+                renderer.currentTriangleTranslation.y -= 0.1
+            }
+            else{
                 for camera in renderer.cameraLists{
                     camera.update_eye(with: simd_float3(0,-1,0))
                 }
+            }
            
             break
         case Keycode.a:
-            renderer.currentTriangleTranslation.x -= 0.1
+            if(renderer.moveTriangle){
+                renderer.currentTriangleTranslation.x -= 0.1
+            }
+            else{
                 for camera in renderer.cameraLists{
                     camera.update_eye(with: simd_float3(-1,0,0))
                     
                 }
+            }
            
             break
         case Keycode.d:
-            renderer.currentTriangleTranslation.x += 0.1
+            if(renderer.moveTriangle){
+                renderer.currentTriangleTranslation.x += 0.1
+            }
+            else{
                 for camera in renderer.cameraLists{
                     camera.update_eye(with: simd_float3(1,0,0))
-                   
+                    
                 }
+            }
             break
         default:
             break
