@@ -396,9 +396,9 @@ class Renderer : NSObject, MTKViewDelegate {
     var camera : Camera
     var indicesBuffer : MTLBuffer
     
-    var length : Float = 0.1
-    let minBound = simd_float3(-1,-1,-12)
-    let maxBound = simd_float3(1,1,-10)
+    var length : Float = 0.05
+    let minBound = simd_float3(-2,-2,-14)
+    let maxBound = simd_float3(2,2,-10)
     var nthreads : Int {
         return Int((maxBound.y - minBound.y) / length)
     }
@@ -407,6 +407,7 @@ class Renderer : NSObject, MTKViewDelegate {
     let outputIndicesBuffer : MTLBuffer
     let coneMesh : Mesh
     var triangleCount : Int32?
+    let opageGridPipeLine : pipeLine
     
     init?(mtkView: MTKView){
         
@@ -427,8 +428,8 @@ class Renderer : NSObject, MTKViewDelegate {
         let allocator = MTKMeshBufferAllocator(device: device)
         let planeMDLMesh = MDLMesh(planeWithExtent: simd_float3(1,1,1), segments: simd_uint2(1,1), geometryType: .triangles, allocator: allocator)
         let cubeMDLMesh = MDLMesh(boxWithExtent: simd_float3(1,1,1), segments: simd_uint3(1,1,1), inwardNormals: false, geometryType: .triangles, allocator: allocator)
-        let circleMDLMesh = MDLMesh(sphereWithExtent: simd_float3(1,1,1), segments: simd_uint2(30,30), inwardNormals: False, geometryType: .triangles, allocator: allocator)
-        let coneMDLMesh = MDLMesh(coneWithExtent: simd_float3(1,1,1), segments: simd_uint2(10,10), inwardNormals: False, cap: False, geometryType: .triangles, allocator: allocator)
+        let circleMDLMesh = MDLMesh(sphereWithExtent: simd_float3(1,1,1), segments: simd_uint2(20,20), inwardNormals: False, geometryType: .triangles, allocator: allocator)
+        let coneMDLMesh = MDLMesh(coneWithExtent: simd_float3(1,1,1), segments: simd_uint2(20,20), inwardNormals: False, cap: False, geometryType: .triangles, allocator: allocator)
         
         
         
@@ -457,6 +458,7 @@ class Renderer : NSObject, MTKViewDelegate {
         let vertexDescriptor = cushionedVertexDescriptor()
         
         pipeline = pipeLine(device, "render_vertex", "render_fragment", vertexDescriptor, false)!
+        opageGridPipeLine = pipeLine(device, "renderOpageGrid_vertex", "renderOpageGrid_fragment",vertexDescriptor,false)!
         
         
         let library = device.makeDefaultLibrary()
@@ -543,18 +545,19 @@ class Renderer : NSObject, MTKViewDelegate {
 //        triangleMesh.createInstance(with: create_modelMatrix(translation: currentTriangleTranslation, rotation: simd_float3(0,0,-90), scale: simd_float3(0.3)),and: simd_float4(1,0,0,1))
         //triangleMesh.createInstance(with: create_modelMatrix(translation: currentTriangleTranslation, rotation: simd_float3(0,0,180), scale: simd_float3(0.3)),and: simd_float4(1,0,0,1))
        
-        coneMesh = Mesh(device: device, Mesh: coneMDLMesh)!
-        coneMesh.createInstance(with: create_modelMatrix(translation: simd_float3(0,0,-11)),and: simd_float4(0,1,0,1))
+        coneMesh = Mesh(device: device, Mesh: circleMDLMesh)!
+        coneMesh.createInstance(with: create_modelMatrix(translation: simd_float3(0,0,-12),scale: simd_float3(1)),and: simd_float4(0,1,0,1))
+        print(coneMesh.Mesh?.submeshes[0].indexType.rawValue)
         coneMesh.init_instance_buffers(with: camera.cameraMatrix)
-        triangleCount = 2
+        triangleCount = coneMesh.triangleCount
         print("Triangle count : ",triangleCount)
         print("int is :", Int(triangleCount!))
         
         triangleMesh.init_instance_buffers(with: camera.cameraMatrix)
         //print(gridMesh.no_instances * triangleMesh.no_instances)
         
-        indicesBuffer = device.makeBuffer(length: gridMesh.no_instances * MemoryLayout<Int32>.stride * Int(triangleCount!), options: [])!
-        outputIndicesBuffer = device.makeBuffer(length: MemoryLayout<Int32>.stride * gridMesh.no_instances,options: [])!
+        indicesBuffer = device.makeBuffer(length: gridMesh.no_instances * MemoryLayout<Int8>.stride * Int(triangleCount!), options: [])!
+        outputIndicesBuffer = device.makeBuffer(length: MemoryLayout<Int8>.stride * gridMesh.no_instances,options: [])!
         
     }
    
@@ -569,59 +572,62 @@ class Renderer : NSObject, MTKViewDelegate {
         
         frameSephamore.wait()
         frameConstants.viewMatrix = camera.cameraMatrix
-        
+        guard let commandBuffer = commandQueue.makeCommandBuffer() else {return}
+        commandBuffer.addCompletedHandler(){[self] _ in
+            frameSephamore.signal()
+        }
         
         triangleModelMatrix = create_modelMatrix(translation: currentTriangleTranslation, rotation: simd_float3(0,0,0), scale: simd_float3(0.3))
         triangleNormalMatrix = create_normalMatrix(modelViewMatrix: frameConstants.viewMatrix * triangleModelMatrix)
         var triangleInstanceData = InstanceConstants(modelMatrix: triangleModelMatrix, normalMatrix: triangleNormalMatrix)
         //triangleMesh.BufferArray[0].buffer.contents().bindMemory(to: InstanceConstants.self, capacity: 1).pointee = InstanceConstants(modelMatrix: triangleModelMatrix, normalMatrix: triangleModelMatrix)
        
-        
-        guard let commandBuffer = commandQueue.makeCommandBuffer() else {return}
-        commandBuffer.addCompletedHandler(){[self] _ in
-            frameSephamore.signal()
-        }
-        
-        guard let computeCommandBuffer = commandQueue.makeCommandBuffer() else {return}
-        
-        
-        guard let computeEncoder = computeCommandBuffer.makeComputeCommandEncoder() else {return}
-        
-        var ptr = gridMesh.BufferArray[1].buffer
-        
-        
-        computeEncoder.setComputePipelineState(computePipeLineState)
-        var cubeBB = [minBound,maxBound]
-        computeEncoder.setBuffer(indicesBuffer, offset: 0, index: 6)
-        computeEncoder.setBytes(&length, length: 4, index: 4)
-        computeEncoder.setBuffer(ptr, offset: 0, index: 5)
-        computeEncoder.setBytes(&cubeBB, length: MemoryLayout<simd_float3>.stride * 2, index: 0)
-        computeEncoder.setBytes(&triangleVertices, length: MemoryLayout<Float>.stride * 20 * 3, index: 1)
-        //computeEncoder.setBytes(&triangleInstanceData, length: MemoryLayout<InstanceConstants>.stride, index: 2)
-        computeEncoder.setBuffer(triangleMesh.BufferArray[0].buffer, offset: 0, index: 2)
-        computeEncoder.setBuffer(colourBuffer, offset: 0, index: 3)
-        computeEncoder.setBuffer(cubeMesh.BufferArray[1].buffer, offset: 0, index: 7)
-        
-       
+        if(fps == 0){
+           
+            
+            guard let computeCommandBuffer = commandQueue.makeCommandBuffer() else {return}
+            
+            
+            guard let computeEncoder = computeCommandBuffer.makeComputeCommandEncoder() else {return}
+            
+            var ptr = gridMesh.BufferArray[1].buffer
+            
+            
+            computeEncoder.setComputePipelineState(computePipeLineState)
+            var cubeBB = [minBound,maxBound]
+            computeEncoder.setBuffer(indicesBuffer, offset: 0, index: 6)
+            computeEncoder.setBytes(&length, length: 4, index: 4)
+            computeEncoder.setBuffer(ptr, offset: 0, index: 5)
+            computeEncoder.setBytes(&cubeBB, length: MemoryLayout<simd_float3>.stride * 2, index: 0)
+            //computeEncoder.setBytes(&coneMesh.Mesh!.vertexBuffers[0].buffer, length: MemoryLayout<Float>.stride * 20 * 3, index: 1)
+            computeEncoder.setBuffer(coneMesh.Mesh!.vertexBuffers[0].buffer, offset: 0, index: 1)
+            //computeEncoder.setBytes(&triangleInstanceData, length: MemoryLayout<InstanceConstants>.stride, index: 2)
+            computeEncoder.setBuffer(coneMesh.BufferArray[0].buffer, offset: 0, index: 2)
+            computeEncoder.setBuffer(colourBuffer, offset: 0, index: 3)
+            computeEncoder.setBuffer(cubeMesh.BufferArray[1].buffer, offset: 0, index: 7)
+            computeEncoder.setBuffer(coneMesh.Mesh!.submeshes[0].indexBuffer.buffer, offset: 0, index: 9)
+            
+            
             
             //computeEncoder.setBytes(&instace_index, length: MemoryLayout<Int>.stride, index: 8)
-        computeEncoder.dispatchThreadgroups(MTLSize(width: Int(triangleCount!), height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 3, height:3, depth: 3))
-        
-        
-        computeEncoder.setComputePipelineState(finalComputePipeLineState)
-        computeEncoder.setBuffer(outputIndicesBuffer, offset: 0, index: 9)
-        var count : Int32 = 1
-        computeEncoder.setBytes(&(triangleCount!), length: MemoryLayout<Int32>.stride, index: 8)
-        computeEncoder.dispatchThreadgroups(MTLSize(width: gridMesh.no_instances, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
-        
-        computeEncoder.setComputePipelineState(colourGridComputePipeLineState)
-        computeEncoder.dispatchThreadgroups(MTLSize(width: gridMesh.no_instances, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
-//        instace_index = 1
-//        computeEncoder.setBytes(&instace_index, length: MemoryLayout<Int>.stride, index: 8)
-//        computeEncoder.dispatchThreadgroups(MTLSize(width: 1, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 5, height:5, depth: 5))
-        computeEncoder.endEncoding()
-        computeCommandBuffer.commit()
-        computeCommandBuffer.waitUntilCompleted()
+            computeEncoder.dispatchThreadgroups(MTLSize(width: Int(triangleCount!), height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 4, height:4, depth: 4))
+            
+            
+            computeEncoder.setComputePipelineState(finalComputePipeLineState)
+            computeEncoder.setBuffer(outputIndicesBuffer, offset: 0, index: 9)
+            var count : Int32 = 1
+            computeEncoder.setBytes(&(triangleCount!), length: MemoryLayout<Int32>.stride, index: 8)
+            computeEncoder.dispatchThreadgroups(MTLSize(width: gridMesh.no_instances, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+            
+            computeEncoder.setComputePipelineState(colourGridComputePipeLineState)
+            computeEncoder.dispatchThreadgroups(MTLSize(width: gridMesh.no_instances, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+            //        instace_index = 1
+            //        computeEncoder.setBytes(&instace_index, length: MemoryLayout<Int>.stride, index: 8)
+            //        computeEncoder.dispatchThreadgroups(MTLSize(width: 1, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 5, height:5, depth: 5))
+            computeEncoder.endEncoding()
+            computeCommandBuffer.commit()
+            computeCommandBuffer.waitUntilCompleted()
+        }
         
 //        let colourData = cubeMesh.BufferArray[1].buffer.contents().bindMemory(to: simd_float4.self, capacity: gridMesh.instanceCount)
 //        let result = indicesBuffer.contents().bindMemory(to: Int32.self, capacity: gridMesh.instanceCount)
@@ -667,12 +673,8 @@ class Renderer : NSObject, MTKViewDelegate {
         
         gridMesh.draw(renderEncoder: renderEncoder)
         
-//        renderEncoder.setVertexBuffer(triangleVB, offset: 0, index: 0)
-//        renderEncoder.setVertexBuffer(colourBuffer, offset: 0, index: vertexBufferIDs.colour)
-//        renderEncoder.setVertexBytes(&triangleInstanceData, length: MemoryLayout<InstanceConstants>.stride, index: vertexBufferIDs.instanceConstant)
-//
-//        renderEncoder.drawIndexedPrimitives(type: .triangle, indexCount: 3, indexType: .uint16, indexBuffer: triangleIB!, indexBufferOffset: 0, instanceCount: 1)
-        triangleMesh.draw(renderEncoder: renderEncoder)
+
+        coneMesh.draw(renderEncoder: renderEncoder)
         
         cubeMesh.draw(renderEncoder: renderEncoder)
         

@@ -188,6 +188,8 @@ class Mesh{
     
     var boundingBox : [simd_float3]?
     var triangleCount : Int32?
+    var int32indices = [Int32]()
+    var int32IndexBuffer : MTLBuffer?
     
     
     init?(device : MTLDevice, Mesh : MDLMesh,  with label : String = "NoLabel"){
@@ -218,6 +220,14 @@ class Mesh{
             boundingBox = [Mesh.boundingBox.minBounds,Mesh.boundingBox.maxBounds]
             try self.Mesh = MTKMesh(mesh: Mesh, device: device)
             triangleCount = Int32(self.Mesh!.submeshes[0].indexCount / 3)
+            let indexCount = self.Mesh!.submeshes[0].indexCount
+            let indexptr = self.Mesh!.submeshes[0].indexBuffer.buffer.contents().bindMemory(to: uint16.self, capacity: indexCount)
+            for i in 0..<indexCount{
+                let index = Int32((indexptr + i).pointee)
+                int32indices.append(index)
+            }
+            int32IndexBuffer = device.makeBuffer(bytes: &int32indices, length: MemoryLayout<Int32>.stride * indexCount,options: [])
+            //int32indices = self.Mesh?.submeshes[0].indexBuffer.buffer
             
             print("\(label) Mesh created")
         
@@ -871,7 +881,7 @@ class pipeLine {
         let pipelineDescriptor = MTLRenderPipelineDescriptor()
         pipelineDescriptor.maxVertexAmplificationCount = amplificationCount
         pipelineDescriptor.colorAttachments[0].pixelFormat = colourPixelFormat
-        pipelineDescriptor.colorAttachments[0].isBlendingEnabled = true
+        //pipelineDescriptor.colorAttachments[0].isBlendingEnabled = true
         pipelineDescriptor.colorAttachments[0]
           .sourceRGBBlendFactor = .one
         pipelineDescriptor.colorAttachments[0]

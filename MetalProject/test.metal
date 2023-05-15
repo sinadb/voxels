@@ -88,6 +88,8 @@ vertex VertexOut render_vertex(VertexIn in [[stage_in]],
     simd_float4x4 projectionMatrix = frameTransforms.projectionMatrix;
     simd_float4x4 viewMatrix = frameTransforms.viewMatrix;
     out.pos = projectionMatrix * viewMatrix * modelMatrix * in.pos;
+    out.world_normal = in.normal.xyz;
+    
     return out;
 }
     
@@ -97,7 +99,11 @@ fragment float4 render_fragment(VertexOut in [[stage_in]]){
     if( in.colour.a == 0 ){
         discard_fragment();
     }
-    return in.colour;
+    float3 light = normalize(float3(0,1,0));
+    float ambientFactor = 0.05;
+    float diffuseFactor = saturate(dot(in.world_normal,light));
+    float finalFactor = diffuseFactor + ambientFactor;
+    return float4(in.colour.rgb * finalFactor, 1);
 }
     
     
@@ -253,14 +259,15 @@ fragment float4 render_fragment(VertexOut in [[stage_in]]){
     }
 
 
-    constant int gridSize = 8000;
+    constant int gridSize = 80*80*80;
 kernel void compute(const device float3* cubeBB [[buffer(0)]],
                     const device float& length [[buffer(4)]],
                     const device VertexIn* in [[buffer(1)]],
+                    const device int16_t* indexBuffer [[buffer(9)]],
                     const device InstanceConstants* instanceTransform [[buffer(2)]],
                     device simd_float4& colour [[buffer(3)]],
                    // device simd_float4* gridColourBuffer [[buffer(5)]],
-                    device int* indices [[buffer(6)]],
+                    device int8_t* indices [[buffer(6)]],
                     device simd_float4* opageGridColourBuffer [[buffer(7)]],
                     const device int& instance_index [[buffer(8)]],
                uint3 position [[thread_position_in_threadgroup]],
@@ -279,11 +286,14 @@ kernel void compute(const device float3* cubeBB [[buffer(0)]],
     float miny = cubeBB[0][1];
     float minz = cubeBB[0][2];
     
+    int index0 = indexBuffer[0 + groupPosition.x * 3];
+    int index1 = indexBuffer[1 + groupPosition.x * 3];
+    int index2 = indexBuffer[2 + groupPosition.x * 3];
     
-    simd_float4x4 modelMatrix = instanceTransform[groupPosition.x].modelMatrix;
-    float3 pos1 = (modelMatrix * in[0].pos).xyz;
-    float3 pos2 = (modelMatrix * in[1].pos).xyz;
-    float3 pos3 = (modelMatrix * in[2].pos).xyz;
+    simd_float4x4 modelMatrix = instanceTransform[0].modelMatrix;
+    float3 pos1 = (modelMatrix * in[index0].pos).xyz;
+    float3 pos2 = (modelMatrix * in[index1].pos).xyz;
+    float3 pos3 = (modelMatrix * in[index2].pos).xyz;
     
     // find the bounding box of the triangle and only test those
     float tminx = pos1.x;
@@ -473,10 +483,10 @@ kernel void compute(const device float3* cubeBB [[buffer(0)]],
     
     //constant int gridSize = 2*2*2;
     
-void kernel final_compute(device int* indices [[buffer(6)]],
+void kernel final_compute(device int8_t* indices [[buffer(6)]],
                           device simd_float4* opageGridColourBuffer [[buffer(7)]],
                           const device int& nTriangles [[buffer(8)]],
-                          device int* outPutIndices [[buffer(9)]],
+                          device int8_t* outPutIndices [[buffer(9)]],
                           uint position [[thread_position_in_grid]]
                           ){
     int collision = 0;
@@ -493,14 +503,23 @@ void kernel final_compute(device int* indices [[buffer(6)]],
     //opageGridColourBuffer[position] = simd_float4(0);
     
 }
-    
+    constant int row = 40;
     void kernel colour_grid_compute(
                               device simd_float4* opageGridColourBuffer [[buffer(7)]],
-                              device int* outPutIndices [[buffer(9)]],
+                              device int8_t* outPutIndices [[buffer(9)]],
                               uint position [[thread_position_in_grid]]
                               ){
                                   if(outPutIndices[position] == 1){
-                                      opageGridColourBuffer[position] = simd_float4(1,0,0,0.5);
+                                      
+//                                          uint seed = position * 10000 ; // Adjust the seed formula as needed
+//                                          float2 randomValue = fract(sin(float2(seed, seed + 1)) * float2(43758.5453, 36969.3258));
+//
+//                                          // Map the random value to the desired range
+//                                          float minValue = 0.0;
+//                                          float maxValue = 1.0;
+//                                          float randomRange = maxValue - minValue;
+//                                          float randomResult = randomValue.x * randomRange + minValue;
+                                      opageGridColourBuffer[position] = simd_float4(1,0.1,0.2,1);
                                   }
                                   else{
                                       opageGridColourBuffer[position] = simd_float4(0);
@@ -516,13 +535,18 @@ vertex VertexOut renderOpageGrid_vertex(VertexIn in [[stage_in]],
                               ){
     VertexOut out;
     out.pos = frameTransform.projectionMatrix * frameTransform.viewMatrix * float4(in.pos.xyz + translate[index],1);
+    out.world_normal = in.normal.xyz;
     out.colour = float4(1,0,0,1);
     return out;
 }
 
 fragment float4 renderOpageGrid_fragment(VertexOut in [[stage_in]]){
 
-    return in.colour;
+    float3 light = float3(0,0,1);
+    float ambientFactor = 0.1;
+    float diffuseFactor = saturate(dot(in.world_normal,light));
+    float finalFactor = diffuseFactor + ambientFactor;
+    return float4(in.colour.rgb * finalFactor, 1);
 }
 
 
