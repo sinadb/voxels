@@ -259,7 +259,7 @@ fragment float4 render_fragment(VertexOut in [[stage_in]]){
     }
 
 
-    constant int gridSize = 80*80*80;
+    constant int gridSize = 40*40*40;
 kernel void compute(const device float3* cubeBB [[buffer(0)]],
                     const device float& length [[buffer(4)]],
                     const device VertexIn* in [[buffer(1)]],
@@ -267,9 +267,9 @@ kernel void compute(const device float3* cubeBB [[buffer(0)]],
                     const device InstanceConstants* instanceTransform [[buffer(2)]],
                     device simd_float4& colour [[buffer(3)]],
                    // device simd_float4* gridColourBuffer [[buffer(5)]],
-                    device int8_t* indices [[buffer(6)]],
-                    device simd_float4* opageGridColourBuffer [[buffer(7)]],
-                    const device int& instance_index [[buffer(8)]],
+                    device atomic_int* indices [[buffer(6)]],
+                    //device simd_float4* opageGridColourBuffer [[buffer(7)]],
+                    //const device int& instance_index [[buffer(8)]],
                uint3 position [[thread_position_in_threadgroup]],
                uint3 nthreads [[threads_per_threadgroup]],
                uint3 groupPosition [[threadgroup_position_in_grid]]
@@ -324,62 +324,9 @@ kernel void compute(const device float3* cubeBB [[buffer(0)]],
     float start = floor( (tminx - minx) / n);
     float end = start + ((tmaxx - tminx) / n);
     
-//    for (float i = 0 ; i != n ; i++ ){
-//        for (float j = 0 ; j != n ; j++){
-//            for (float k = 0 ; k != n ; k++){
-//                float3 min = float3(minx + (i * length), miny + (j * length), minz + (k * length));
-//                float3 max = float3(minx + (i + 1) * length, miny + (j + 1) * length, minz + (k + 1) * length);
-//                array<float3, 2> BoundingBox = {min,max};
-//                bool collision = test_collision(pos1, pos2, pos3, BoundingBox);
-//                uint index = i * n2 + j * n + k ;
-//                if(!collision){
-//                    // gridColourBuffer[index] = simd_float4(0,1,0,1);
-//                        opageGridColourBuffer[index] = simd_float4(0);
-//                        indices[index] = 0;
-//
-//                    }
-//                    else{
-//                       // gridColourBuffer[index] = simd_float4(0,0,0,1);
-//                        opageGridColourBuffer[index] = simd_float4(1,0,0,0.5);
-//                        indices[index] = 1;
-//                    }
-//
-//            }
-//        }
-//    }
+
     
     
-    
-//    for (float i = 0 ; i != n ; i++ ){
-//                float3 min = float3(minx + (i * length), miny + (position.y * length), minz + (position.z * length));
-//                float3 max = float3(minx + (i + 1) * length, miny + (position.y + 1) * length, minz + (position.z + 1) * length);
-//                array<float3, 2> BoundingBox = {min,max};
-//                bool collision = test_collision(pos1, pos2, pos3, BoundingBox);
-//                uint index = i * n2 + position.y * n + position.z ;
-//                if(!collision){
-//                    // gridColourBuffer[index] = simd_float4(0,1,0,1);
-//                        opageGridColourBuffer[index] = simd_float4(0);
-//                        indices[index] = 0;
-//
-//                    }
-//                    else{
-//                       // gridColourBuffer[index] = simd_float4(0,0,0,1);
-//                        opageGridColourBuffer[index] = simd_float4(1,0,0,0.5);
-//                        indices[index] = 1;
-//                    }
-//
-//    }
-    
-//    uint maxindex = n * n * n;
-//    for(uint i = 0 ; i != maxindex ; i++){
-//        if(indices[i] == 0){
-//            opageGridColourBuffer[i] = simd_float4(0);
-//        }
-//    }
-    
-//
-    
-    threadgroup uint shared_memory[20*20*20];
     float jump = ( cubeBB[1][0] - cubeBB[0][0] ) / (nthreads.x * length);
     int size = int((cubeBB[1][0] - cubeBB[0][0]) / length);
 
@@ -415,69 +362,17 @@ kernel void compute(const device float3* cubeBB [[buffer(0)]],
                 
 
                 uint index = (position.x + i * nthreads.x) * size * size + (position.y + j * nthreads.y) * size + (position.z + k * nthreads.z);
-                if(!collision){
-                   
-                    //if(indices[index] != 1){
-                        //opageGridColourBuffer[index] = simd_float4(0);
-                    int indexTest = index + groupPosition.x * gridSize;
-                        indices[index + groupPosition.x * gridSize ] = 0;
-
-                    //}
-
-                    
-                    shared_memory[index] = 0;
-
-                }
-                else{
-                      
-                    int indexTest = index + groupPosition.x * gridSize;
-                    indices[index + groupPosition.x * gridSize] = 1;
-                    //opageGridColourBuffer[index] = simd_float4(1,0,0,0.5);
-
-                    shared_memory[index] = 1;
+                if(collision){
+                    //atomic_fetch_add_explicit(&indices[index], 1, memory_order_relaxed);
+                    int expected = 0;
+                    int desired = 1;
+                    atomic_compare_exchange_weak_explicit(&indices[index], &expected, desired, memory_order_relaxed, memory_order_relaxed);
+                  
                 }
             }
         }
         
-//        threadgroup_barrier(mem_flags::mem_none);
-//        if(position.x == 0 && position.y == 0 && position.z == 0){
-//            for (int i = 0; i != 8000 ; i++){
-//                if(shared_memory[i] == 1){
-//                    opageGridColourBuffer[i] = simd_float4(1,0,0,0.5);
-//                }
-//                else{
-//                    opageGridColourBuffer[i] = simd_float4(0);
-//                }
-//            }
-//        }
-
     }
-
-    
-    
-    
-//    float3 min = float3(cubeBB[0].x + position.x * length, cubeBB[0].y + position.y * length, cubeBB[0].z + position.z * length );
-//    float3 max = float3(cubeBB[0].x + (position.x + 1) * length, cubeBB[0].y + (position.y + 1) * length, cubeBB[0].z + (position.z + 1) * length );
-//    float3 centre = (min + max) * 0.5;
-//    array<float3, 2> BoundingBox = {min,max};
-//
-//
-//    bool collision = test_collision( pos1, pos2, pos3, BoundingBox);
-//
-//    uint index = position.x * nthreads.x * nthreads.x + position.y * nthreads.x + position.z ;
-//    if(!collision){
-//       // gridColourBuffer[index] = simd_float4(0,1,0,1);
-//        opageGridColourBuffer[index] = simd_float4(0);
-//        indices[index] = 0;
-//
-//    }
-//    else{
-//       // gridColourBuffer[index] = simd_float4(0,0,0,1);
-//        opageGridColourBuffer[index] = simd_float4(1,0,0,0.5);
-//        indices[index] = 1;
-//    }
-
-    
     
 }
     
@@ -503,27 +398,21 @@ void kernel final_compute(device int8_t* indices [[buffer(6)]],
     //opageGridColourBuffer[position] = simd_float4(0);
     
 }
-    constant int row = 40;
+    
     void kernel colour_grid_compute(
                               device simd_float4* opageGridColourBuffer [[buffer(7)]],
-                              device int8_t* outPutIndices [[buffer(9)]],
+                              //device int8_t* outPutIndices [[buffer(9)]],
+                              device int* indices [[buffer(6)]],
                               uint position [[thread_position_in_grid]]
                               ){
-                                  if(outPutIndices[position] == 1){
+                                  if(indices[position] > 0){
                                       
-//                                          uint seed = position * 10000 ; // Adjust the seed formula as needed
-//                                          float2 randomValue = fract(sin(float2(seed, seed + 1)) * float2(43758.5453, 36969.3258));
-//
-//                                          // Map the random value to the desired range
-//                                          float minValue = 0.0;
-//                                          float maxValue = 1.0;
-//                                          float randomRange = maxValue - minValue;
-//                                          float randomResult = randomValue.x * randomRange + minValue;
                                       opageGridColourBuffer[position] = simd_float4(1,0.1,0.2,1);
                                   }
                                   else{
                                       opageGridColourBuffer[position] = simd_float4(0);
                                   }
+                                 
         
         
     }
@@ -547,6 +436,18 @@ fragment float4 renderOpageGrid_fragment(VertexOut in [[stage_in]]){
     float diffuseFactor = saturate(dot(in.world_normal,light));
     float finalFactor = diffuseFactor + ambientFactor;
     return float4(in.colour.rgb * finalFactor, 1);
+}
+    
+void kernel test_atomic(device atomic_int* buffer [[buffer(0)]],
+                        constant int& count [[buffer(1)]],
+                        uint position [[thread_position_in_grid]]
+                        ){
+    int expected = 0;
+    for(int i = 0; i!=count; i++){
+        atomic_compare_exchange_weak_explicit(&buffer[i], &expected, 1, memory_order_relaxed, memory_order_relaxed);
+    }
+    
+    
 }
 
 

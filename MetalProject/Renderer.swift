@@ -396,7 +396,7 @@ class Renderer : NSObject, MTKViewDelegate {
     var camera : Camera
     var indicesBuffer : MTLBuffer
     
-    var length : Float = 0.05
+    var length : Float = 0.1
     let minBound = simd_float3(-2,-2,-14)
     let maxBound = simd_float3(2,2,-10)
     var nthreads : Int {
@@ -408,6 +408,8 @@ class Renderer : NSObject, MTKViewDelegate {
     let coneMesh : Mesh
     var triangleCount : Int32?
     let opageGridPipeLine : pipeLine
+    let atomicComputeState : MTLComputePipelineState
+    let atomicBuffer : MTLBuffer
     
     init?(mtkView: MTKView){
         
@@ -472,7 +474,10 @@ class Renderer : NSObject, MTKViewDelegate {
         let colourGridComputeFunction = library?.makeFunction(name: "colour_grid_compute")
         colourGridComputePipeLineState = try! device.makeComputePipelineState(function: colourGridComputeFunction!)
         
+        let atomicComputeFunction = library?.makeFunction(name: "test_atomic")
+        atomicComputeState = try! device.makeComputePipelineState(function: atomicComputeFunction!)
         
+        atomicBuffer = device.makeBuffer(length: MemoryLayout<Int32>.stride * 10, options: [])!
         
         
         axisMinMax = device.makeBuffer(length: MemoryLayout<simd_float2>.stride * 3,options: [])!
@@ -556,7 +561,7 @@ class Renderer : NSObject, MTKViewDelegate {
         triangleMesh.init_instance_buffers(with: camera.cameraMatrix)
         //print(gridMesh.no_instances * triangleMesh.no_instances)
         
-        indicesBuffer = device.makeBuffer(length: gridMesh.no_instances * MemoryLayout<Int8>.stride * Int(triangleCount!), options: [])!
+        indicesBuffer = device.makeBuffer(length: gridMesh.no_instances * MemoryLayout<Int32>.stride , options: [])!
         outputIndicesBuffer = device.makeBuffer(length: MemoryLayout<Int8>.stride * gridMesh.no_instances,options: [])!
         
     }
@@ -582,7 +587,16 @@ class Renderer : NSObject, MTKViewDelegate {
         var triangleInstanceData = InstanceConstants(modelMatrix: triangleModelMatrix, normalMatrix: triangleNormalMatrix)
         //triangleMesh.BufferArray[0].buffer.contents().bindMemory(to: InstanceConstants.self, capacity: 1).pointee = InstanceConstants(modelMatrix: triangleModelMatrix, normalMatrix: triangleModelMatrix)
        
-        if(fps == 0){
+//        guard let computeEncoder = commandBuffer.makeComputeCommandEncoder() else {return}
+//        computeEncoder.setComputePipelineState(atomicComputeState)
+//        var count : Int32 = 10
+//        computeEncoder.setBytes(&count, length: MemoryLayout<Int32>.stride, index: 1)
+//        computeEncoder.setBuffer(atomicBuffer, offset: 0, index: 0)
+//        computeEncoder.dispatchThreadgroups(MTLSize(width: 5, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+//        computeEncoder.endEncoding()
+        
+        
+        if(true){
            
             
             guard let computeCommandBuffer = commandQueue.makeCommandBuffer() else {return}
@@ -611,13 +625,13 @@ class Renderer : NSObject, MTKViewDelegate {
             
             //computeEncoder.setBytes(&instace_index, length: MemoryLayout<Int>.stride, index: 8)
             computeEncoder.dispatchThreadgroups(MTLSize(width: Int(triangleCount!), height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 4, height:4, depth: 4))
+//            
             
-            
-            computeEncoder.setComputePipelineState(finalComputePipeLineState)
+            //computeEncoder.setComputePipelineState(finalComputePipeLineState)
             computeEncoder.setBuffer(outputIndicesBuffer, offset: 0, index: 9)
             var count : Int32 = 1
             computeEncoder.setBytes(&(triangleCount!), length: MemoryLayout<Int32>.stride, index: 8)
-            computeEncoder.dispatchThreadgroups(MTLSize(width: gridMesh.no_instances, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
+            //computeEncoder.dispatchThreadgroups(MTLSize(width: gridMesh.no_instances, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
             
             computeEncoder.setComputePipelineState(colourGridComputePipeLineState)
             computeEncoder.dispatchThreadgroups(MTLSize(width: gridMesh.no_instances, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
@@ -689,12 +703,14 @@ class Renderer : NSObject, MTKViewDelegate {
         
         
         commandBuffer.present(view.currentDrawable!)
+       
         commandBuffer.commit()
+        //commandBuffer.waitUntilCompleted()
         if (fps == 0){
             
-            let array = axisMinMax.contents().bindMemory(to: simd_float2.self, capacity: 3)
-            for i in 0..<3 {
-                print((array + i ).pointee)
+            let array = atomicBuffer.contents().bindMemory(to: Int32.self, capacity: 10)
+            for i in 0..<10{
+                print((array + i).pointee)
             }
         }
         fps+=1
