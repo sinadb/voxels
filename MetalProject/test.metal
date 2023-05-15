@@ -294,41 +294,13 @@ kernel void compute(const device float3* cubeBB [[buffer(0)]],
     float3 pos1 = (modelMatrix * in[index0].pos).xyz;
     float3 pos2 = (modelMatrix * in[index1].pos).xyz;
     float3 pos3 = (modelMatrix * in[index2].pos).xyz;
-    
-    // find the bounding box of the triangle and only test those
-    float tminx = pos1.x;
-    float tmaxx = pos1.x;
-    float tminy = pos1.y;
-    float tmaxy = pos1.y;
-    float tminz = pos1.z;
-    float tmaxz = pos1.z;
-    
-    tminx = min(pos3.x,min(pos2.x,tminx));
-    tmaxx = max(pos3.x,max(pos2.x,tmaxx));
-//    tminx = min(pos3.x,min(pos3.x,tminx));
-//    tmaxx = max(pos3.x,max(pos3.x,tmaxx));
-//    
-    tminy = min(pos3.y,min(pos2.y,tminy));
-    tmaxy = max(pos3.y,max(pos2.y,tmaxy));
-//    tminy = min(pos3.y,min(pos3.y,tminy));
-//    tmaxy = max(pos3.y,max(pos3.y,tmaxy));
-//    
-    tminz = min(pos3.z,min(pos2.z,tminz));
-    tmaxz = max(pos3.z,max(pos2.z,tmaxz));
-//    tminz = min(pos3.z,min(pos3.z,tminz));
-//    tmaxz = max(pos3.z,max(pos3.z,tmaxz));
-    
-    
-    float n2 = pow(n, 2);
-    
-    float start = floor( (tminx - minx) / n);
-    float end = start + ((tmaxx - tminx) / n);
-    
+  
 
     
     
     float jump = ( cubeBB[1][0] - cubeBB[0][0] ) / (nthreads.x * length);
     int size = int((cubeBB[1][0] - cubeBB[0][0]) / length);
+    
 
     for(float i = 0 ; i < jump ; i++){
         int stepx = position.x + i * nthreads.x;
@@ -346,7 +318,13 @@ kernel void compute(const device float3* cubeBB [[buffer(0)]],
                     break;
                 }
 
-
+                uint index = (position.x + i * nthreads.x) * size * size + (position.y + j * nthreads.y) * size + (position.z + k * nthreads.z);
+                
+//                int value = atomic_load_explicit(&indices[index], memory_order_relaxed);
+//                if(value > 0){
+//                    break;
+//                }
+                
                     float3 min = float3(cubeBB[0].x + (position.x + i * nthreads.x) * length,
                                         cubeBB[0].y + (position.y + j * nthreads.y) * length,
                                         cubeBB[0].z + (position.z + k * nthreads.z) * length );
@@ -361,7 +339,7 @@ kernel void compute(const device float3* cubeBB [[buffer(0)]],
                 bool collision = test_collision( pos1, pos2, pos3, BoundingBox);
                 
 
-                uint index = (position.x + i * nthreads.x) * size * size + (position.y + j * nthreads.y) * size + (position.z + k * nthreads.z);
+               
                 if(collision){
                     //atomic_fetch_add_explicit(&indices[index], 1, memory_order_relaxed);
                     int expected = 0;

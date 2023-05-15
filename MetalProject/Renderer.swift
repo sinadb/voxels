@@ -582,19 +582,7 @@ class Renderer : NSObject, MTKViewDelegate {
             frameSephamore.signal()
         }
         
-        triangleModelMatrix = create_modelMatrix(translation: currentTriangleTranslation, rotation: simd_float3(0,0,0), scale: simd_float3(0.3))
-        triangleNormalMatrix = create_normalMatrix(modelViewMatrix: frameConstants.viewMatrix * triangleModelMatrix)
-        var triangleInstanceData = InstanceConstants(modelMatrix: triangleModelMatrix, normalMatrix: triangleNormalMatrix)
-        //triangleMesh.BufferArray[0].buffer.contents().bindMemory(to: InstanceConstants.self, capacity: 1).pointee = InstanceConstants(modelMatrix: triangleModelMatrix, normalMatrix: triangleModelMatrix)
        
-//        guard let computeEncoder = commandBuffer.makeComputeCommandEncoder() else {return}
-//        computeEncoder.setComputePipelineState(atomicComputeState)
-//        var count : Int32 = 10
-//        computeEncoder.setBytes(&count, length: MemoryLayout<Int32>.stride, index: 1)
-//        computeEncoder.setBuffer(atomicBuffer, offset: 0, index: 0)
-//        computeEncoder.dispatchThreadgroups(MTLSize(width: 5, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
-//        computeEncoder.endEncoding()
-        
         
         if(true){
            
@@ -629,37 +617,16 @@ class Renderer : NSObject, MTKViewDelegate {
             
             //computeEncoder.setComputePipelineState(finalComputePipeLineState)
             computeEncoder.setBuffer(outputIndicesBuffer, offset: 0, index: 9)
-            var count : Int32 = 1
             computeEncoder.setBytes(&(triangleCount!), length: MemoryLayout<Int32>.stride, index: 8)
-            //computeEncoder.dispatchThreadgroups(MTLSize(width: gridMesh.no_instances, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
-            
             computeEncoder.setComputePipelineState(colourGridComputePipeLineState)
             computeEncoder.dispatchThreadgroups(MTLSize(width: gridMesh.no_instances, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
-            //        instace_index = 1
-            //        computeEncoder.setBytes(&instace_index, length: MemoryLayout<Int>.stride, index: 8)
-            //        computeEncoder.dispatchThreadgroups(MTLSize(width: 1, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 5, height:5, depth: 5))
+          
             computeEncoder.endEncoding()
             computeCommandBuffer.commit()
             computeCommandBuffer.waitUntilCompleted()
         }
         
-//        let colourData = cubeMesh.BufferArray[1].buffer.contents().bindMemory(to: simd_float4.self, capacity: gridMesh.instanceCount)
-//        let result = indicesBuffer.contents().bindMemory(to: Int32.self, capacity: gridMesh.instanceCount)
-//        for i in 0..<gridMesh.instanceCount{
-//            if((result + i).pointee == 1){
-//                (colourData + i).pointee = simd_float4(1,0,0,0.5)
-//                //print(i)
-//            }
-//            else{
-//                (colourData + i).pointee = simd_float4(0,0,0,0)
-//            }
-//        }
-        
-        
-        
-        
-        
-        
+
         guard let renderPassDescriptor = view.currentRenderPassDescriptor else {return}
         renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 1, 1, 1)
         
