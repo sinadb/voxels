@@ -52,11 +52,17 @@ class GridMesh : Mesh {
         super.init(device: device, vertices: gridVertices, indices: gridIndices)
         let step = ( maxBound.x - minBound.x ) / length
         let halfLength : Float = length * 0.5
+        
+        let n = Int((maxBound.x - minBound.x) / length)
        
-        for i in stride(from: minBound.x, to: maxBound.x, by: length){
-            for j in stride(from: minBound.y, to: maxBound.y, by: length){
-                for k in stride(from: minBound.z, to: maxBound.z, by: length){
-                    let centre =  simd_float3(i + halfLength, j + halfLength, k + halfLength)
+        for i in 0..<n{
+            let offsetx = halfLength + Float(i) * length
+            for j in 0..<n{
+                let offsety = halfLength + Float(j) * length
+                for k in 0..<n{
+                    let offsetz = halfLength + Float(k) * length
+                    
+                    let centre =  simd_float3(minBound.x + offsetx, minBound.y + offsety, minBound.z + offsetz)
                     
                     let c_r = Float.random(in: 0...1)
                     let c_g = Float.random(in: 0...1)

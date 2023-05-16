@@ -396,7 +396,7 @@ class Renderer : NSObject, MTKViewDelegate {
     var camera : Camera
     var indicesBuffer : MTLBuffer
     
-    var length : Float = 0.1
+    var length : Float = 0.02
     let minBound = simd_float3(-2,-2,-14)
     let maxBound = simd_float3(2,2,-10)
     var nthreads : Int {
@@ -406,11 +406,13 @@ class Renderer : NSObject, MTKViewDelegate {
     let triangleMesh : Mesh
     let outputIndicesBuffer : MTLBuffer
     let coneMesh : Mesh
-    var triangleCount : Int32?
+    var triangleCount : Int32
     let opageGridPipeLine : pipeLine
     let atomicComputeState : MTLComputePipelineState
     let atomicBuffer : MTLBuffer
     
+    
+    let spotMesh : Mesh
     init?(mtkView: MTKView){
         
         
@@ -521,17 +523,23 @@ class Renderer : NSObject, MTKViewDelegate {
         
        
         
-        for i in stride(from: minBound.x, to: maxBound.x, by: length){
-            for j in stride(from: minBound.y, to: maxBound.y, by: length){
-                for k in stride(from: minBound.z, to: maxBound.z, by: length){
-                    let centre =  simd_float3(i + halfLength, j + halfLength, k + halfLength)
+        let n = Int((maxBound.x - minBound.x) / length)
+       
+        for i in 0..<n{
+            let offsetx = halfLength + Float(i) * length
+            for j in 0..<n{
+                let offsety = halfLength + Float(j) * length
+                for k in 0..<n{
+                    let offsetz = halfLength + Float(k) * length
                     
+                    let centre =  simd_float3(minBound.x + offsetx, minBound.y + offsety, minBound.z + offsetz)
+             
                     //                    let c_r = Float.random(in: 0...1)
                     //                    let c_g = Float.random(in: 0...1)
                     //                    let c_b = Float.random(in: 0...1)
                     //let colour = simd_float4(vec3: <#T##simd_float3#>)
                     let modelMatrix = create_modelMatrix(translation: centre,scale: simd_float3(length))
-                    cubeMesh.createInstance(with: modelMatrix,and: simd_float4(1,1,1,0))
+                    cubeMesh.createInstance(with: modelMatrix,and: simd_float4(1,1,0,1))
                     
                 }
             }
@@ -554,9 +562,22 @@ class Renderer : NSObject, MTKViewDelegate {
         coneMesh.createInstance(with: create_modelMatrix(translation: simd_float3(0,0,-12),scale: simd_float3(1)),and: simd_float4(0,1,0,1))
         print(coneMesh.Mesh?.submeshes[0].indexType.rawValue)
         coneMesh.init_instance_buffers(with: camera.cameraMatrix)
-        triangleCount = coneMesh.triangleCount
-        print("Triangle count : ",triangleCount)
-        print("int is :", Int(triangleCount!))
+        
+        
+        let assetURL = Bundle.main.url(
+            forResource: "spot_triangulated",
+            withExtension: "obj")
+        
+        spotMesh = Mesh(device: device, address: assetURL!, with: "SpotMesh")
+        let spotmodelMatrix = create_modelMatrix(translation: simd_float3(0,0,-12),scale: simd_float3(2))
+        spotMesh.createInstance(with: spotmodelMatrix, and: simd_float4(1,1,0,1))
+        spotMesh.init_instance_buffers(with: camera.cameraMatrix)
+        
+        
+        triangleCount = spotMesh.triangleCount!
+        
+        print("the number of cubes is : ", cubeMesh.no_instances)
+        
         
         triangleMesh.init_instance_buffers(with: camera.cameraMatrix)
         //print(gridMesh.no_instances * triangleMesh.no_instances)
@@ -584,7 +605,7 @@ class Renderer : NSObject, MTKViewDelegate {
         
        
         
-        if(true){
+        if(fps == 0){
            
             
             guard let computeCommandBuffer = commandQueue.makeCommandBuffer() else {return}
@@ -602,22 +623,22 @@ class Renderer : NSObject, MTKViewDelegate {
             computeEncoder.setBuffer(ptr, offset: 0, index: 5)
             computeEncoder.setBytes(&cubeBB, length: MemoryLayout<simd_float3>.stride * 2, index: 0)
             //computeEncoder.setBytes(&coneMesh.Mesh!.vertexBuffers[0].buffer, length: MemoryLayout<Float>.stride * 20 * 3, index: 1)
-            computeEncoder.setBuffer(coneMesh.Mesh!.vertexBuffers[0].buffer, offset: 0, index: 1)
+            computeEncoder.setBuffer(spotMesh.Mesh!.vertexBuffers[0].buffer, offset: 0, index: 1)
             //computeEncoder.setBytes(&triangleInstanceData, length: MemoryLayout<InstanceConstants>.stride, index: 2)
-            computeEncoder.setBuffer(coneMesh.BufferArray[0].buffer, offset: 0, index: 2)
+            computeEncoder.setBuffer(spotMesh.BufferArray[0].buffer, offset: 0, index: 2)
             computeEncoder.setBuffer(colourBuffer, offset: 0, index: 3)
             computeEncoder.setBuffer(cubeMesh.BufferArray[1].buffer, offset: 0, index: 7)
-            computeEncoder.setBuffer(coneMesh.Mesh!.submeshes[0].indexBuffer.buffer, offset: 0, index: 9)
+            computeEncoder.setBuffer(spotMesh.Mesh!.submeshes[0].indexBuffer.buffer, offset: 0, index: 9)
             
             
             
             //computeEncoder.setBytes(&instace_index, length: MemoryLayout<Int>.stride, index: 8)
-            computeEncoder.dispatchThreadgroups(MTLSize(width: Int(triangleCount!), height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 4, height:4, depth: 4))
+            computeEncoder.dispatchThreadgroups(MTLSize(width: Int(triangleCount), height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 8, height:8, depth: 8))
 //            
             
             //computeEncoder.setComputePipelineState(finalComputePipeLineState)
             computeEncoder.setBuffer(outputIndicesBuffer, offset: 0, index: 9)
-            computeEncoder.setBytes(&(triangleCount!), length: MemoryLayout<Int32>.stride, index: 8)
+            computeEncoder.setBytes(&(triangleCount), length: MemoryLayout<Int32>.stride, index: 8)
             computeEncoder.setComputePipelineState(colourGridComputePipeLineState)
             computeEncoder.dispatchThreadgroups(MTLSize(width: gridMesh.no_instances, height: 1, depth: 1), threadsPerThreadgroup: MTLSize(width: 1, height: 1, depth: 1))
           
@@ -652,10 +673,10 @@ class Renderer : NSObject, MTKViewDelegate {
        
 
         
-        gridMesh.draw(renderEncoder: renderEncoder)
+       // gridMesh.draw(renderEncoder: renderEncoder)
         
 
-        coneMesh.draw(renderEncoder: renderEncoder)
+        //spotMesh.draw(renderEncoder: renderEncoder)
         
         cubeMesh.draw(renderEncoder: renderEncoder)
         

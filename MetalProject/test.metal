@@ -259,11 +259,11 @@ fragment float4 render_fragment(VertexOut in [[stage_in]]){
     }
 
 
-    constant int gridSize = 40*40*40;
+    constant int gridSize = 200*200*200;
 kernel void compute(const device float3* cubeBB [[buffer(0)]],
                     const device float& length [[buffer(4)]],
                     const device VertexIn* in [[buffer(1)]],
-                    const device int16_t* indexBuffer [[buffer(9)]],
+                    const device int* indexBuffer [[buffer(9)]],
                     const device InstanceConstants* instanceTransform [[buffer(2)]],
                     device simd_float4& colour [[buffer(3)]],
                    // device simd_float4* gridColourBuffer [[buffer(5)]],

@@ -396,13 +396,15 @@ class Mesh{
         let mdlMeshVD = MDLVertexDescriptor()
         mdlMeshVD.attributes[0] = MDLVertexAttribute(name: MDLVertexAttributePosition, format: .float4, offset: 0, bufferIndex: 0)
         
-        mdlMeshVD.attributes[1] = MDLVertexAttribute(name: MDLVertexAttributeNormal, format: .float3, offset: 16, bufferIndex: 0)
-        mdlMeshVD.attributes[2] = MDLVertexAttribute(name: MDLVertexAttributeTextureCoordinate, format: .float2, offset: 28, bufferIndex: 0)
+        mdlMeshVD.attributes[1] = MDLVertexAttribute(name: MDLVertexAttributeNormal, format: .float4, offset: 16, bufferIndex: 0)
         
-        mdlMeshVD.attributes[3] = MDLVertexAttribute(name: MDLVertexAttributeTangent, format: .float4, offset: 36, bufferIndex: 0)
+        mdlMeshVD.attributes[2] = MDLVertexAttribute(name: MDLVertexAttributeTextureCoordinate, format: .float4, offset: 32, bufferIndex: 0)
         
-        mdlMeshVD.attributes[4] = MDLVertexAttribute(name: MDLVertexAttributeBitangent, format: .float4, offset: 52, bufferIndex: 0)
-        mdlMeshVD.layouts[0] = MDLVertexBufferLayout(stride: 68)
+        mdlMeshVD.attributes[3] = MDLVertexAttribute(name: MDLVertexAttributeTangent, format: .float4, offset: 48, bufferIndex: 0)
+        
+        mdlMeshVD.attributes[4] = MDLVertexAttribute(name: MDLVertexAttributeBitangent, format: .float4, offset: 64, bufferIndex: 0)
+        
+        mdlMeshVD.layouts[0] = MDLVertexBufferLayout(stride: 80)
       
         self.device = device
        
@@ -430,6 +432,8 @@ class Mesh{
             print("Failed to create Mesh \(label)")
             return
         }
+        
+        triangleCount = Int32(self.Mesh!.submeshes[0].indexCount / 3)
         
         let textureLoader = MTKTextureLoader(device: device)
         vertexBuffer = Mesh?.vertexBuffers[0].buffer
