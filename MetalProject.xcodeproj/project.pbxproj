@@ -25,7 +25,7 @@
 		DA75DEBE2955AEAF00251E4C /* Maths.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA75DEBD2955AEAF00251E4C /* Maths.swift */; };
 		DA981A4129DB001500498CA0 /* Scene.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA981A4029DB001500498CA0 /* Scene.swift */; };
 		DA99E4542977098900249982 /* compute.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA99E4532977098900249982 /* compute.swift */; };
-		DA9B2B662A08394F003B1BAE /* test.metal in Sources */ = {isa = PBXBuildFile; fileRef = DA9B2B652A08394F003B1BAE /* test.metal */; };
+		DA9B2B662A08394F003B1BAE /* compute.metal in Sources */ = {isa = PBXBuildFile; fileRef = DA9B2B652A08394F003B1BAE /* compute.metal */; };
 		DAA6AAF129BBC16700BF03E3 /* constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAA6AAF029BBC16700BF03E3 /* constants.swift */; };
 		DACCA4852A142A2600B0B598 /* blub_triangulated.obj in Resources */ = {isa = PBXBuildFile; fileRef = DACCA4842A142A2600B0B598 /* blub_triangulated.obj */; };
 /* End PBXBuildFile section */
@@ -72,7 +72,7 @@
 		DA75DEBD2955AEAF00251E4C /* Maths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Maths.swift; sourceTree = "<group>"; };
 		DA981A4029DB001500498CA0 /* Scene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scene.swift; sourceTree = "<group>"; };
 		DA99E4532977098900249982 /* compute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = compute.swift; sourceTree = "<group>"; };
-		DA9B2B652A08394F003B1BAE /* test.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = test.metal; sourceTree = "<group>"; };
+		DA9B2B652A08394F003B1BAE /* compute.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = compute.metal; sourceTree = "<group>"; };
 		DAA6AAF029BBC16700BF03E3 /* constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = constants.swift; sourceTree = "<group>"; };
 		DACCA4842A142A2600B0B598 /* blub_triangulated.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = blub_triangulated.obj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -140,7 +140,7 @@
 				DA21FF3D29CB9F8B00F5C549 /* Camera.swift */,
 				DA981A4029DB001500498CA0 /* Scene.swift */,
 				DA75DEBB2955A58B00251E4C /* Shaders.metal */,
-				DA9B2B652A08394F003B1BAE /* test.metal */,
+				DA9B2B652A08394F003B1BAE /* compute.metal */,
 				DAA6AAF029BBC16700BF03E3 /* constants.swift */,
 				DA1EB18329B388ED00942766 /* Helper.swift */,
 				DA99E4532977098900249982 /* compute.swift */,
@@ -317,7 +317,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DA75DEBC2955A58B00251E4C /* Shaders.metal in Sources */,
-				DA9B2B662A08394F003B1BAE /* test.metal in Sources */,
+				DA9B2B662A08394F003B1BAE /* compute.metal in Sources */,
 				DA1EB18429B388ED00942766 /* Helper.swift in Sources */,
 				DA0A77482A0E603600639F51 /* utils.swift in Sources */,
 				DA981A4129DB001500498CA0 /* Scene.swift in Sources */,
