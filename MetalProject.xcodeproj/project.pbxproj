@@ -27,6 +27,7 @@
 		DA99E4542977098900249982 /* compute.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA99E4532977098900249982 /* compute.swift */; };
 		DA9B2B662A08394F003B1BAE /* test.metal in Sources */ = {isa = PBXBuildFile; fileRef = DA9B2B652A08394F003B1BAE /* test.metal */; };
 		DAA6AAF129BBC16700BF03E3 /* constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAA6AAF029BBC16700BF03E3 /* constants.swift */; };
+		DACCA4852A142A2600B0B598 /* blub_triangulated.obj in Resources */ = {isa = PBXBuildFile; fileRef = DACCA4842A142A2600B0B598 /* blub_triangulated.obj */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -73,6 +74,7 @@
 		DA99E4532977098900249982 /* compute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = compute.swift; sourceTree = "<group>"; };
 		DA9B2B652A08394F003B1BAE /* test.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = test.metal; sourceTree = "<group>"; };
 		DAA6AAF029BBC16700BF03E3 /* constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = constants.swift; sourceTree = "<group>"; };
+		DACCA4842A142A2600B0B598 /* blub_triangulated.obj */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = blub_triangulated.obj; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -106,6 +108,7 @@
 				DA3293E629D2176900C5B842 /* spot_texture.png */,
 				DA3293E729D2176900C5B842 /* spot_material.mtl */,
 				DA3293E829D2176900C5B842 /* spot_triangulated.obj */,
+				DACCA4842A142A2600B0B598 /* blub_triangulated.obj */,
 			);
 			path = Models;
 			sourceTree = SOURCE_ROOT;
@@ -287,6 +290,7 @@
 				DA3293EB29D2176900C5B842 /* spot_triangulated.obj in Resources */,
 				DA75DE8F2954AE1500251E4C /* Assets.xcassets in Resources */,
 				DA3293E929D2176900C5B842 /* spot_texture.png in Resources */,
+				DACCA4852A142A2600B0B598 /* blub_triangulated.obj in Resources */,
 				DA75DE922954AE1500251E4C /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

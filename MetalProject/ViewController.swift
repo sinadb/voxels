@@ -118,7 +118,7 @@ class ViewController: NSViewController {
             break
         case Keycode.q:
             if(renderer.moveTriangle){
-                renderer.currentTriangleTranslation.z += 0.1
+              
             }
             else{
                 for camera in renderer.cameraLists{
@@ -128,7 +128,7 @@ class ViewController: NSViewController {
             break
         case Keycode.e:
             if(renderer.moveTriangle){
-                renderer.currentTriangleTranslation.z -= 0.1
+               
             }
             else{
                 for camera in renderer.cameraLists{
@@ -139,7 +139,7 @@ class ViewController: NSViewController {
             
         case Keycode.w:
             if(renderer.moveTriangle){
-                renderer.currentTriangleTranslation.y += 0.1
+                
             }
             else{
                 for camera in renderer.cameraLists{
@@ -150,7 +150,7 @@ class ViewController: NSViewController {
             break
         case Keycode.w:
             if(renderer.moveTriangle){
-                renderer.currentTriangleTranslation.y += 0.1
+               
             }
             else{
                 for camera in renderer.cameraLists{
@@ -159,7 +159,7 @@ class ViewController: NSViewController {
             }
         case Keycode.s:
             if(renderer.moveTriangle){
-                renderer.currentTriangleTranslation.y -= 0.1
+                
             }
             else{
                 for camera in renderer.cameraLists{
@@ -170,7 +170,7 @@ class ViewController: NSViewController {
             break
         case Keycode.a:
             if(renderer.moveTriangle){
-                renderer.currentTriangleTranslation.x -= 0.1
+               
             }
             else{
                 for camera in renderer.cameraLists{
@@ -182,7 +182,7 @@ class ViewController: NSViewController {
             break
         case Keycode.d:
             if(renderer.moveTriangle){
-                renderer.currentTriangleTranslation.x += 0.1
+                
             }
             else{
                 for camera in renderer.cameraLists{

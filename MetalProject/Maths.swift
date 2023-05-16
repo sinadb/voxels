@@ -11,10 +11,19 @@
 import Foundation
 import simd
 
+
+
 extension simd_float3 {
     init(vec4 : simd_float4){
         self.init(vec4.x,vec4.y,vec4.z)
     }
+    static func +(_ left : simd_float3, _ right : simd_float3) -> simd_float3 {
+        return simd_float3(left.x + right.x, left.y + right.y, left.z + right.z)
+    }
+    static func *(_ left : simd_float3, _ operand : Float) -> simd_float3 {
+        return simd_float3(left.x * operand, left.y * operand, left.z * operand)
+    }
+    
 }
 
 extension simd_float4 {

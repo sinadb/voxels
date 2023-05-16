@@ -258,18 +258,15 @@ fragment float4 render_fragment(VertexOut in [[stage_in]]){
         //return true;
     }
 
-
-    constant int gridSize = 200*200*200;
+    constant int loopEnd = 100;
+    constant int squareSize = loopEnd * loopEnd;
+    constant int gridSize = squareSize * loopEnd;
 kernel void compute(const device float3* cubeBB [[buffer(0)]],
                     const device float& length [[buffer(4)]],
                     const device VertexIn* in [[buffer(1)]],
                     const device int* indexBuffer [[buffer(9)]],
                     const device InstanceConstants* instanceTransform [[buffer(2)]],
-                    device simd_float4& colour [[buffer(3)]],
-                   // device simd_float4* gridColourBuffer [[buffer(5)]],
                     device atomic_int* indices [[buffer(6)]],
-                    //device simd_float4* opageGridColourBuffer [[buffer(7)]],
-                    //const device int& instance_index [[buffer(8)]],
                uint3 position [[thread_position_in_threadgroup]],
                uint3 nthreads [[threads_per_threadgroup]],
                uint3 groupPosition [[threadgroup_position_in_grid]]
@@ -277,14 +274,9 @@ kernel void compute(const device float3* cubeBB [[buffer(0)]],
     
    
     
-    if(position.x == 0){
-        colour = simd_float4(0,0,0,1);
-    }
+   
     
-    float n =  ((cubeBB[1][0] - cubeBB[0][0]) / length);
-    float minx = cubeBB[0][0];
-    float miny = cubeBB[0][1];
-    float minz = cubeBB[0][2];
+   
     
     int index0 = indexBuffer[0 + groupPosition.x * 3];
     int index1 = indexBuffer[1 + groupPosition.x * 3];
@@ -356,41 +348,80 @@ kernel void compute(const device float3* cubeBB [[buffer(0)]],
     
     //constant int gridSize = 2*2*2;
     
-void kernel final_compute(device int8_t* indices [[buffer(6)]],
-                          device simd_float4* opageGridColourBuffer [[buffer(7)]],
-                          const device int& nTriangles [[buffer(8)]],
-                          device int8_t* outPutIndices [[buffer(9)]],
-                          uint position [[thread_position_in_grid]]
-                          ){
-    int collision = 0;
-    for(int i = 0; i!= nTriangles; i++){
-        int index = position + (i) * gridSize;
-        collision += indices[index];
-        if(collision > 0){
-            outPutIndices[position] = 1;
-            //opageGridColourBuffer[position] = simd_float4(1,0,0,0.5);
-            return;
-        }
-    }
-    outPutIndices[position] = 0;
-    //opageGridColourBuffer[position] = simd_float4(0);
-    
-}
+//void kernel final_compute(device int8_t* indices [[buffer(6)]],
+//                          device simd_float4* opageGridColourBuffer [[buffer(7)]],
+//                          const device int& nTriangles [[buffer(8)]],
+//                          device int8_t* outPutIndices [[buffer(9)]],
+//                          uint position [[thread_position_in_grid]]
+//                          ){
+//    int collision = 0;
+//    for(int i = 0; i!= nTriangles; i++){
+//        int index = position + (i) * gridSize;
+//        collision += indices[index];
+//        if(collision > 0){
+//            outPutIndices[position] = 1;
+//           
+//            return;
+//        }
+//    }
+//    outPutIndices[position] = 0;
+// 
+//    
+//}
     
     void kernel colour_grid_compute(
-                              device simd_float4* opageGridColourBuffer [[buffer(7)]],
+                              device simd_float4* opaqueGridColourBuffer [[buffer(7)]],
                               //device int8_t* outPutIndices [[buffer(9)]],
                               device int* indices [[buffer(6)]],
                               uint position [[thread_position_in_grid]]
                               ){
                                   if(indices[position] > 0){
                                       
-                                      opageGridColourBuffer[position] = simd_float4(1,0.1,0.2,1);
+                                      opaqueGridColourBuffer[position] = simd_float4(1,0.1,0.2,1);
                                   }
                                   else{
-                                      opageGridColourBuffer[position] = simd_float4(0);
+                                      opaqueGridColourBuffer[position] = simd_float4(0);
                                   }
                                  
+        
+        
+    }
+    
+    void kernel fill_voxel(device int* indices [[buffer(6)]],
+                           device simd_float4* opaqueGridColourBuffer [[buffer(7)]],
+                           uint3 position [[thread_position_in_grid]]
+                           ){
+        
+        
+        int startIndex = position.z + position.y * loopEnd;
+        int leftIndex = startIndex;
+        int rightIndex = startIndex;
+        bool fill = false;
+        for(int i = 0; i!= loopEnd; i++){
+            int current_index = startIndex + i * squareSize;
+            if(indices[current_index] > 0){
+                leftIndex = current_index;
+                break;
+            }
+        }
+        
+        for(int i = loopEnd - 1; i >= 0; i--){
+            int currentIndex = startIndex + i * squareSize;
+            if(indices[currentIndex] > 0){
+                rightIndex = currentIndex;
+                break;
+            }
+        }
+        if(leftIndex == rightIndex){
+            return;
+        }
+        
+        for(int i = leftIndex; i <= rightIndex; i+= squareSize){
+            opaqueGridColourBuffer[i] = simd_float4(1,0.1,0.2,1);
+            indices[i] = 1;
+        }
+        
+        
         
         
     }
